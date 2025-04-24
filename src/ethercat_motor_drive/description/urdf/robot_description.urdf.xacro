@@ -4,14 +4,14 @@
   <xacro:macro name="TechRobot">
 
   <!-- helper macro -->
-  <xacro:include filename="$(find TechControlInterface)/urdf/create_link.xacro"/>
+  <xacro:include filename="$(find ethercat_motor_drive)/description/urdf/create_link.xacro"/>
 
   <xacro:create_link
       link_name="base_link"
       xyz_offset="0 0 0"
       rpy_offset="0 0 0"
       mass="23.3444937848516"
-      mesh_path="package://TechControlInterface/meshes"
+      mesh_path="package://ethercat_motor_drive/meshes"
   />
 
   <xacro:create_link
@@ -19,14 +19,14 @@
       xyz_offset="0 0 0"
       rpy_offset="0 0 0"
       mass="8.67027571199243"
-      mesh_path="package://TechControlInterface/meshes"
+      mesh_path="package://ethercat_motor_drive/meshes"
   />
   <xacro:create_link
       link_name="link1"
       xyz_offset="0 0 0"
       rpy_offset="0 0 0"
       mass="0.647403062770475"
-      mesh_path="package://TechControlInterface/meshes"
+      mesh_path="package://ethercat_motor_drive/meshes"
   />
 
   <xacro:create_link
@@ -34,7 +34,7 @@
       xyz_offset="0 0 0"
       rpy_offset="0 0 0"
       mass="0.647403062770475"
-      mesh_path="package://TechControlInterface/meshes"
+      mesh_path="package://ethercat_motor_drive/meshes"
   />
 
   <xacro:create_link
@@ -42,7 +42,7 @@
       xyz_offset="0 0 0"
       rpy_offset="0 0 0"
       mass="0.441881459418396"
-      mesh_path="package://TechControlInterface/meshes"
+      mesh_path="package://ethercat_motor_drive/meshes"
   />
 
   <xacro:create_link
@@ -50,7 +50,7 @@
       xyz_offset="0 0 0"
       rpy_offset="0 0 0"
       mass="0.359995634810237"
-      mesh_path="package://TechControlInterface/meshes"
+      mesh_path="package://ethercat_motor_drive/meshes"
   />
 
   <xacro:create_link
@@ -58,14 +58,14 @@
       xyz_offset="0 0 0"
       rpy_offset="0 0 -0.187797428"
       mass="0.441881459418396"
-      mesh_path="package://TechControlInterface/meshes"
+      mesh_path="package://ethercat_motor_drive/meshes"
   />
   <xacro:create_link
       link_name="link6"
       xyz_offset="0 0 0"
       rpy_offset="0 0 0"
       mass="0.441881459418396"
-      mesh_path="package://TechControlInterface/meshes"
+      mesh_path="package://ethercat_motor_drive/meshes"
   />
 
 

@@ -4,15 +4,14 @@
   <xacro:macro name="motor_drive">
 
     <ros2_control name="motor_drive" type="system">
-      <!-- <hardware>
+      <hardware>
         <plugin>ethercat_driver/EthercatDriver</plugin>
         <param name="master_id">0</param>
         <param name="control_frequency">100</param>
-      </hardware> -->
-      <hardware>
-        <!-- By default, set up controllers for simulation. This won't work on real hardware -->
-        <plugin>mock_components/GenericSystem</plugin>
       </hardware>
+      <!-- <hardware>
+        <plugin>mock_components/GenericSystem</plugin>
+      </hardware> -->
 
       <joint name="joint2">
         <state_interface name="position"/>
@@ -25,8 +24,8 @@
           <plugin>ethercat_generic_plugins/EcCiA402Drive</plugin>
           <param name="alias">0</param>
           <param name="position">0</param>
-          <param name="mode_of_operation">8</param>
-          <param name="slave_config">$(find ethercat_motor_drive)/config/tech_driver.yaml</param>
+          <param name="mode_of_operation">9</param>
+          <param name="slave_config">$(find moveit_config)/driver_config/tech_driver.yaml</param>
         </ec_module>
       </joint>
 
@@ -41,8 +40,8 @@
           <plugin>ethercat_generic_plugins/EcCiA402Drive</plugin>
           <param name="alias">0</param>
           <param name="position">1</param>
-          <param name="mode_of_operation">8</param>
-          <param name="slave_config">$(find ethercat_motor_drive)/config/tech_driver.yaml</param>
+          <param name="mode_of_operation">9</param>
+          <param name="slave_config">$(find moveit_config)/driver_config/tech_driver.yaml</param>
         </ec_module>
       </joint>
 
@@ -57,8 +56,8 @@
           <plugin>ethercat_generic_plugins/EcCiA402Drive</plugin>
           <param name="alias">0</param>
           <param name="position">2</param>
-          <param name="mode_of_operation">8</param>
-          <param name="slave_config">$(find ethercat_motor_drive)/config/tech_driver.yaml</param>
+          <param name="mode_of_operation">9</param>
+          <param name="slave_config">$(find moveit_config)/driver_config/tech_driver.yaml</param>
         </ec_module>
       </joint>
 
@@ -73,8 +72,8 @@
           <plugin>ethercat_generic_plugins/EcCiA402Drive</plugin>
           <param name="alias">0</param>
           <param name="position">3</param>
-          <param name="mode_of_operation">8</param>
-          <param name="slave_config">$(find ethercat_motor_drive)/config/tech_driver.yaml</param>
+          <param name="mode_of_operation">9</param>
+          <param name="slave_config">$(find moveit_config)/driver_config/tech_driver.yaml</param>
         </ec_module>
       </joint>
 
@@ -89,8 +88,8 @@
           <plugin>ethercat_generic_plugins/EcCiA402Drive</plugin>
           <param name="alias">0</param>
           <param name="position">4</param>
-          <param name="mode_of_operation">8</param>
-          <param name="slave_config">$(find ethercat_motor_drive)/config/tech_driver.yaml</param>
+          <param name="mode_of_operation">9</param>
+          <param name="slave_config">$(find moveit_config)/driver_config/tech_driver.yaml</param>
         </ec_module>
       </joint> -->
 

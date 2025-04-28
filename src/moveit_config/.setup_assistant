@@ -1,9 +1,9 @@
 moveit_setup_assistant_config:
   urdf:
-    package: TechControlInterface
+    package: moveit_config
     relative_path: urdf/robot.urdf
   srdf:
-    relative_path: config/TechControlInterface.srdf
+    relative_path: config/moveit_config.srdf
   package_settings:
     author_name: jintao@todo.com
     author_email: jintao@todo.com

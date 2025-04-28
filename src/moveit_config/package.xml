@@ -4,7 +4,7 @@
   <name>moveit_config</name>
   <version>0.3.0</version>
   <description>
-     An automatically generated package with all the configuration and launch files for using the TechControlInterface with the MoveIt Motion Planning Framework
+     An automatically generated package with all the configuration and launch files for using the moveit_config with the MoveIt Motion Planning Framework
   </description>
   <maintainer email="jintao@todo.com">jintao@todo.com</maintainer>
 
@@ -30,7 +30,9 @@
        We don't include them by default to prevent installing gazebo and all its dependencies. -->
   <!-- <exec_depend>joint_trajectory_controller</exec_depend> -->
   <!-- <exec_depend>gazebo_ros_control</exec_depend> -->
-  <exec_depend>TechControlInterface</exec_depend>
+  <exec_depend>ethercat_driver</exec_depend>
+  <exec_depend>ethercat_interface</exec_depend>
+  <exec_depend>ethercat_generic_cia402_drive</exec_depend>
   <exec_depend>controller_manager</exec_depend>
   <exec_depend>moveit_configs_utils</exec_depend>
   <exec_depend>moveit_ros_move_group</exec_depend>

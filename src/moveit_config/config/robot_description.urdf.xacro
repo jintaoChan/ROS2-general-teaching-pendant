@@ -137,7 +137,7 @@
     <limit effort="1000.0" lower="${-pi}" upper="${pi}" velocity="2.5"/>
   </joint>
 
-  <joint name="joint6" type="fixed">
+  <joint name="joint6" type="prismatic">
     <parent link="link5"/>
     <child link="link6"/>
     <origin

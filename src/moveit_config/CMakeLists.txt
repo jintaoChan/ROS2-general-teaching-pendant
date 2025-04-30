@@ -5,7 +5,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(ethercat_driver REQUIRED)
 find_package(ethercat_interface REQUIRED)
-find_package(ethercat_generic_cia402_drive REQUIRED)
+find_package(ethercat_wait_needed_cia402_drive REQUIRED)
 ament_package()
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/launch")

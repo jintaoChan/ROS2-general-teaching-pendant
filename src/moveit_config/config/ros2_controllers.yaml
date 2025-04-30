@@ -1,11 +1,13 @@
 # This config file is used by ros2_control
 controller_manager:
   ros__parameters:
-    update_rate: 100  # Hz
+    update_rate: 1000  # Hz
 
     store_manipulator_controller:
       type: joint_trajectory_controller/JointTrajectoryController
-
+    
+    store_gripper_controller:
+      type: position_controllers/GripperActionController
 
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
@@ -19,7 +21,8 @@ store_manipulator_controller:
       - joint4
       - joint5
     command_interfaces:
-      - velocity
+      - position
+      # - velocity
     state_interfaces:
       - position
       - velocity
@@ -55,3 +58,15 @@ store_manipulator_controller:
         d: 1.0
         i_clamp: 1.0
         ff_velocity_scale: 1.0
+
+store_gripper_controller:
+  ros__parameters:
+    joints:
+      - joint6
+    command_interfaces:
+      - position
+      - velocity
+    state_interfaces:
+      - position
+      - velocity
+    allow_nonzero_velocity_at_trajectory_end: true

@@ -6,8 +6,12 @@ controller_manager:
     store_manipulator_controller:
       type: joint_trajectory_controller/JointTrajectoryController
     
+    ## this one will give motor driver terminal position directly instead a trajectory.
+    # store_gripper_controller:
+    #   type: position_controllers/GripperActionController
+
     store_gripper_controller:
-      type: position_controllers/GripperActionController
+      type: joint_trajectory_controller/JointTrajectoryController
 
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
@@ -70,3 +74,10 @@ store_gripper_controller:
       - position
       - velocity
     allow_nonzero_velocity_at_trajectory_end: true
+    gains:
+      joint6:
+        p: 10.0
+        i: 0.0
+        d: 1.0
+        i_clamp: 1.0
+        ff_velocity_scale: 1.0

@@ -141,10 +141,10 @@
     <parent link="link5"/>
     <child link="link6"/>
     <origin
-      xyz="0.0035379 0.14737 0.2235"
+      xyz="0.0035379 -0.02363 0.2235"
       rpy="1.5708 0 -3.141497428" />
     <axis xyz="0 0 1"/>
-    <limit effort="1000.0" lower="-1" upper="1" velocity="2.5"/>
+    <limit effort="1000.0" lower="0" upper="0.230" velocity="2.5"/>
   </joint>
 
 

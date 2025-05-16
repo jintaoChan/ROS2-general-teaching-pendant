@@ -1,0 +1,9 @@
+<library path="control_pad_controller">
+  <class name="control_pad/ControlPadController"
+        type="control_pad::ControlPadController"
+        base_class_type="controller_interface::ControllerInterface">
+  <description>
+    Control Pad
+  </description>
+</class>
+</library>

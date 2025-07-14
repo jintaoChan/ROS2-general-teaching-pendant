@@ -15,9 +15,12 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>moveit_core</depend>
+  <depend>moveit_servo</depend>
   <depend>moveit_ros_planning</depend>
   <depend>moveit_ros_planning_interface</depend>
   <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>trac_ik</depend>
   <exec_depend>ethercat_driver</exec_depend>
   <exec_depend>ethercat_interface</exec_depend>
   <exec_depend>ethercat_generic_cia402_drive</exec_depend>

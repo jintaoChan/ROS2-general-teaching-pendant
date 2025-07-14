@@ -13,7 +13,8 @@
   <depend>robotics_configs</depend>
   <depend>controller_manager</depend>
   <depend>controller_manager_msgs</depend>
-
+  <depend>magic_enum</depend>
+  <depend>trac_ik</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

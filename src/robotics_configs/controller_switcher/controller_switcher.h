@@ -17,8 +17,7 @@ public:
     void switchToTaskExecutor() const;
 
 private:
-    void switchController(const std::vector<std::string>& deactivates,
-                          const std::vector<std::string>& activates = std::vector<std::string>{}) const;
+    void switchController(std::vector<std::string> activates = std::vector<std::string>{}) const;
     std::vector<std::string> listActiveController() const;
 
 

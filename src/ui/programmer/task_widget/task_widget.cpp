@@ -1,11 +1,11 @@
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QtConcurrent/QtConcurrent>
-#include "move_executor.hpp"
+#include "move_executor.h"
 #include "group_info_dialog.h"
 #include "task_widget.h"
 #include "ui_task_widget.h"
-#include "robot_description.hpp"
+#include "robot_description.h"
 
 TaskWidget::TaskWidget(QWidget *parent)
     : QWidget(parent)
@@ -103,7 +103,7 @@ void TaskWidget::on_execute_button_clicked()
         }
         task.push_back({name, points});
     }
-    QtConcurrent::run(ExecuteTask, task);
+    QtConcurrent::run(&MoveExecutor::instance(), &MoveExecutor::ExecuteTask, task);
 }
 
 
@@ -116,6 +116,6 @@ void TaskWidget::on_delete_task_button_clicked()
 
 void TaskWidget::on_stop_button_clicked()
 {
-    QtConcurrent::run(StopMoving);
+    QtConcurrent::run(&MoveExecutor::instance(), &MoveExecutor::StopMoving);
 }
 

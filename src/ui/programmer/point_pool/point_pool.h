@@ -5,7 +5,7 @@
 #include <QStandardItem>
 #include <QKeyEvent>
 #include "treeview_with_key_event.h"
-#include "robot_description.hpp"
+#include "robot_description.h"
 #include "utils.h"
 
 namespace Ui {

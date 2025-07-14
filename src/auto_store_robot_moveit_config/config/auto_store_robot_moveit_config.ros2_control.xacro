@@ -1,0 +1,111 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="motor_drive">
+
+    <ros2_control name="motor_drive" type="system">
+      <!-- <hardware>
+        <plugin>ethercat_driver/EthercatDriver</plugin>
+        <param name="master_id">0</param>
+        <param name="control_frequency">100</param>
+      </hardware> -->
+     <hardware>
+        <plugin>mock_components/GenericSystem</plugin>
+        <param name="calculate_dynamics">true</param>
+      </hardware>
+
+      <joint name="joint2">
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+        <state_interface name="effort"/>
+        <state_interface name="mode"/>
+        <command_interface name="position"/>
+        <command_interface name="velocity"/>
+        <command_interface name="reset_fault"/>
+        <command_interface name="mode"/>
+        <ec_module name="Maxon">
+          <plugin>ethercat_generic_plugins/EcCiA402Drive</plugin>
+          <param name="alias">0</param>
+          <param name="position">0</param>
+          <param name="mode_of_operation">8</param>
+          <param name="slave_config">$(find auto_store_robot_moveit_config)/driver_config/tech_driver.yaml</param>
+        </ec_module>
+      </joint>
+
+      <joint name="joint3">
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+        <state_interface name="effort"/>
+        <state_interface name="mode"/>
+        <command_interface name="position"/>
+        <command_interface name="velocity"/>
+        <command_interface name="reset_fault"/>
+        <command_interface name="mode"/>
+        <ec_module name="Maxon">
+          <plugin>ethercat_generic_plugins/EcCiA402Drive</plugin>
+          <param name="alias">0</param>
+          <param name="position">1</param>
+          <param name="mode_of_operation">8</param>
+          <param name="slave_config">$(find auto_store_robot_moveit_config)/driver_config/tech_driver.yaml</param>
+        </ec_module>
+      </joint>
+
+      <joint name="joint4">
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+        <state_interface name="effort"/>
+        <state_interface name="mode"/>
+        <command_interface name="position"/>
+        <command_interface name="velocity"/>
+        <command_interface name="reset_fault"/>
+        <command_interface name="mode"/>
+        <ec_module name="Maxon">
+          <plugin>ethercat_generic_plugins/EcCiA402Drive</plugin>
+          <param name="alias">0</param>
+          <param name="position">2</param>
+          <param name="mode_of_operation">8</param>
+          <param name="slave_config">$(find auto_store_robot_moveit_config)/driver_config/tech_driver.yaml</param>
+        </ec_module>
+      </joint>
+
+      <joint name="joint5">
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+        <state_interface name="effort"/>
+        <state_interface name="mode"/>
+        <command_interface name="position"/>
+        <command_interface name="velocity"/>
+        <command_interface name="reset_fault"/>
+        <command_interface name="mode"/>
+        <ec_module name="Maxon">
+          <plugin>ethercat_generic_plugins/EcCiA402Drive</plugin>
+          <param name="alias">0</param>
+          <param name="position">3</param>
+          <param name="mode_of_operation">8</param>
+          <param name="slave_config">$(find auto_store_robot_moveit_config)/driver_config/tech_driver.yaml</param>
+        </ec_module>
+      </joint>
+
+<!--      <joint name="joint6">
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+        <state_interface name="effort"/>
+        <state_interface name="mode"/>
+        <command_interface name="position"/>
+        <command_interface name="velocity"/>
+        <command_interface name="reset_fault"/>
+        <command_interface name="mode"/>
+        <ec_module name="Maxon">
+          <plugin>ethercat_generic_plugins/WaitNeededEcCiA402Drive</plugin>
+          <param name="alias">0</param>
+          <param name="position">0</param>
+          <param name="mode_of_operation">8</param>
+          <param name="slave_config">$(find auto_store_robot_moveit_config)/driver_config/stepper.yaml</param>
+        </ec_module>
+      </joint>-->
+
+    </ros2_control>
+
+  </xacro:macro>
+
+</robot>

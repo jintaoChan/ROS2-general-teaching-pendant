@@ -17,9 +17,12 @@ public:
     void changeToPositionMode();
 
 private:
+    std::shared_ptr<std_msgs::msg::Int8> getCurrentMode();
+    void changeMode(std_msgs::msg::Int8 mode);
+
+private:
     rclcpp::Node::SharedPtr m_Node;
     rclcpp::Publisher<std_msgs::msg::Int8>::SharedPtr m_ModeChangerPublisher;
-
 };
 
 #endif // MODE_CHANGER_H

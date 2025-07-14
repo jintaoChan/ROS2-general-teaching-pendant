@@ -1,10 +1,13 @@
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include "control_pad.h"
 #include "ui_control_pad.h"
 #include "joint_group_widget.h"
-#include "robot_description.hpp"
+#include "robot_description.h"
 #include "controller_switcher.h"
 #include "mode_changer.h"
+#include "cartesian_controller.h"
+#include "move_executor.h"
 
 ControlPad::ControlPad(QWidget *parent)
     : QWidget(parent)
@@ -14,10 +17,13 @@ ControlPad::ControlPad(QWidget *parent)
     ui->setupUi(this);
     m_Node = rclcpp::Node::make_shared("control_pad");
     m_JointStateSubscription = m_Node->create_subscription<sensor_msgs::msg::JointState>("/joint_states", 10, std::bind(&ControlPad::recvCallback, this, std::placeholders::_1));
-    m_MoveCommandSender = m_Node->create_publisher<sensor_msgs::msg::JointState>("/control_pad_move_cmd", 10);
     auto& robotDes = RobotDescription::instance();
     auto jointGroupsNames = robotDes.getJointGroupsNames();
-    QVBoxLayout* layout = new QVBoxLayout(this);
+    QHBoxLayout* hlayout = new QHBoxLayout(this);
+    auto cartesianPad = new CartesianPad(this);
+    connect(cartesianPad, &CartesianPad::MoveButtonClicked, this, [this](MoveButtonType type, MoveButtonEvent event, size_t idx){emit MoveCommander(type, event, idx);});
+    hlayout->addWidget(cartesianPad);
+    QVBoxLayout* vlayout = new QVBoxLayout(this);
     for(const auto& jgName: jointGroupsNames) {
         JointGroupWidget* jg = new JointGroupWidget(jgName, this);
         auto joint = robotDes.getJointGroupJointNames(jgName);
@@ -25,11 +31,12 @@ ControlPad::ControlPad(QWidget *parent)
             jg->addJoint(jt);
             connect(jg, &JointGroupWidget::MoveButtonClicked, [this](MoveButtonType type, MoveButtonEvent event, const std::string& jointName){emit MoveCommander(type, event, jointName);});
         }
-        layout->addWidget(jg);
+        vlayout->addWidget(jg);
     }
+    hlayout->addLayout(vlayout);
 
-    layout->addWidget(&m_SettingPanel);
-    setLayout(layout);
+    vlayout->addWidget(&m_SettingPanel);
+    setLayout(hlayout);
 
     connect(&m_SettingPanel, &SettingPanel::on_add_to_point_pool_button_clicked, this, [this]() {
         MovePointInfo p;
@@ -42,6 +49,7 @@ ControlPad::ControlPad(QWidget *parent)
         }
         emit storeCurrentPointToPointPool(p);
     });
+
 }
 
 void ControlPad::run(){
@@ -58,6 +66,9 @@ void ControlPad::MoveCommander(MoveButtonType type, MoveButtonEvent event, const
 {
     ControllerSwitcher::instance().switchToControlPad();
     auto& modeChanger = ModeChanger::instance();
+    auto& moveExecutor = MoveExecutor::instance();
+    CartesianController::instance().dropControl();
+
     sensor_msgs::msg::JointState jointMsg;
     jointMsg.name.push_back(jointName);
     switch(type){
@@ -94,7 +105,35 @@ void ControlPad::MoveCommander(MoveButtonType type, MoveButtonEvent event, const
         break;
     }
     }
-    m_MoveCommandSender->publish(jointMsg);
+    moveExecutor.pubMoveCommand(jointMsg);
+}
+
+void ControlPad::MoveCommander(MoveButtonType type, MoveButtonEvent event, size_t idx) {
+    ControllerSwitcher::instance().switchToControlPad();
+    ModeChanger::instance().changeToVelocityMode();
+    CartesianController::instance().takeControl();
+    std::array<double, 6> arr{0,0,0,0,0,0};
+    switch(type){
+    case MoveButtonType::BACKWARD_VELOCITY: {
+        if(event == MoveButtonEvent::PRESSED){
+            arr[idx] = -m_SettingPanel.getVelocity();
+        }
+        else if(event == MoveButtonEvent::RELEASED){
+        }
+        CartesianController::instance().setVelocity(arr);
+        break;
+    }
+    case MoveButtonType::FORWARD_VELOCITY: {
+        if(event == MoveButtonEvent::PRESSED){
+            arr[idx] = m_SettingPanel.getVelocity();
+        }
+        else if(event == MoveButtonEvent::RELEASED){
+        }
+        CartesianController::instance().setVelocity(arr);
+        break;
+    }
+    }
+
 }
 
 ControlPad::~ControlPad()
@@ -111,4 +150,15 @@ void ControlPad::recvCallback(const sensor_msgs::msg::JointState &msg)
             m_CurrentPosition[joint->getJointName()] = msg.position.at(index);
         }
     }
+
+    auto position = CartesianController::instance().getPosition();
+    auto rotation = CartesianController::instance().getRotation();
+    auto dofRows = this->findChildren<CartesianDOFRow*>();
+    for(size_t i = 0;i < position.size(); ++i) {
+        dofRows[i]->Position->setText(QString::number(position[i]));
+    }
+    for(size_t i = 0;i < rotation.size(); ++i) {
+        dofRows[i + 3]->Position->setText(QString::number(rotation[i]));
+    }
+
 }

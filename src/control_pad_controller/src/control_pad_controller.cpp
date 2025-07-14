@@ -109,7 +109,7 @@ namespace control_pad
         {
             m_StateInterfaceMap[interface.get_interface_name()]->push_back(interface);
         }
-
+        switchMode(8);
         return CallbackReturn::SUCCESS;
     }
 
@@ -155,23 +155,7 @@ namespace control_pad
         {
             m_StartTime = time;
             m_NewModeMsg = false;
-            switch(m_ModeMsg.data){
-                case 0:
-                case 8:
-                    for(size_t i = 0; i < m_JointPositionCommandInterface.size(); ++i) {
-                        m_JointPositionCommandInterface[i].get().set_value(m_JointPositionStateInterface[i].get().get_optional().value());
-                    }
-                case 9:
-                    for(size_t i = 0; i < m_JointVelocityCommandInterface.size(); ++i) {
-                        m_JointVelocityCommandInterface[i].get().set_value(0.0);
-                    }
-                    for(size_t i = 0; i < m_JointModeCommandInterface.size(); ++i) {
-                        m_JointModeCommandInterface[i].get().set_value((double)m_ModeMsg.data);
-                    }
-                    break;
-                default:
-                    RCLCPP_INFO(get_logger(), "Setting a illegal mode! Abort!");
-            }
+            switchMode(m_ModeMsg.data);
         }
 
         if (m_NewMoveMsg)
@@ -210,6 +194,26 @@ namespace control_pad
         return CallbackReturn::SUCCESS;
     }
 
+    void ControlPadController::switchMode(int8_t mode)
+    {
+        switch(mode){
+            case 0:
+            case 8:
+                for(size_t i = 0; i < m_JointPositionCommandInterface.size(); ++i) {
+                    m_JointPositionCommandInterface[i].get().set_value(m_JointPositionStateInterface[i].get().get_optional().value());
+                }
+            case 9:
+                for(size_t i = 0; i < m_JointVelocityCommandInterface.size(); ++i) {
+                    m_JointVelocityCommandInterface[i].get().set_value(0.0);
+                }
+                for(size_t i = 0; i < m_JointModeCommandInterface.size(); ++i) {
+                    m_JointModeCommandInterface[i].get().set_value((double)mode);
+                }
+                break;
+            default:
+                RCLCPP_INFO(get_logger(), "Setting a illegal mode! Abort!");
+        }
+    }
 }
 
 #include "pluginlib/class_list_macros.hpp"

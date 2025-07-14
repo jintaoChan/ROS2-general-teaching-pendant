@@ -15,6 +15,9 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
   controller_manager
   controller_manager_msgs
   std_msgs
+  geometry_msgs
+  moveit_servo
+  trac_ik
 )
 
 # find dependencies
@@ -29,6 +32,7 @@ add_library(${PROJECT_NAME}
   ${PROJECT_SOURCE_DIR}/move_executor/move_executor.cpp
   ${PROJECT_SOURCE_DIR}/controller_switcher/controller_switcher.cpp
   ${PROJECT_SOURCE_DIR}/mode_changer/mode_changer.cpp
+  ${PROJECT_SOURCE_DIR}/cartesian_controller/cartesian_controller.cpp
 )
 
 ament_target_dependencies( ${PROJECT_NAME} ${THIS_PACKAGE_INCLUDE_DEPENDS})
@@ -36,6 +40,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/move_executor>
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/controller_switcher>
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/mode_changer>
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/cartesian_controller>
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/robot_description>
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/utils>
   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>

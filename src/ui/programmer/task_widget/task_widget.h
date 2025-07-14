@@ -3,7 +3,7 @@
 
 #include <QWidget>
 #include <QStandardItem>
-#include "robot_description.hpp"
+#include "robot_description.h"
 #include "utils.h"
 
 

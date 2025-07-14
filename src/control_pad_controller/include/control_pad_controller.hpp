@@ -39,6 +39,7 @@ namespace control_pad
         controller_interface::CallbackReturn on_deactivate(
             const rclcpp_lifecycle::State &previous_state) override;
         rclcpp::Logger get_logger() const { return *m_Logger; }
+        void switchMode(int8_t mode);
     protected:
         // Objects for logging
         std::shared_ptr<rclcpp::Logger> m_Logger;

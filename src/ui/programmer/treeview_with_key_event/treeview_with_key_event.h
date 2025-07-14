@@ -3,7 +3,7 @@
 #include <QTreeView>
 #include <QStandardItem>
 #include <QKeyEvent>
-#include "robot_description.hpp"
+#include "robot_description.h"
 #include "utils.h"
 
 

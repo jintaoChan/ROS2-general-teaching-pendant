@@ -6,8 +6,9 @@
 #include <rclcpp/rclcpp.hpp>
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "move_button.h"
+#include "cartesian_pad.h"
 #include "setting_panel.h"
-#include "robot_description.hpp"
+#include "robot_description.h"
 
 namespace Ui {
 class ControlPad;
@@ -27,6 +28,7 @@ public:
 
 public slots:
     void MoveCommander(MoveButtonType type, MoveButtonEvent event, const std::string& jointName);
+    void MoveCommander(MoveButtonType type, MoveButtonEvent event, size_t idx);
 
 signals:
     void storeCurrentPointToPointPool(const MovePointInfo& point);
@@ -35,7 +37,6 @@ private:
     Ui::ControlPad *ui;
     rclcpp::Node::SharedPtr m_Node;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr m_JointStateSubscription;
-    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr m_MoveCommandSender;
     std::unordered_map<std::string, double> m_CurrentPosition;
     SettingPanel m_SettingPanel;
 };

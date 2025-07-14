@@ -1,0 +1,160 @@
+# This config file is used by ros2_control
+controller_manager:
+  ros__parameters:
+    update_rate: 1000  # Hz
+
+    store_manipulator_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    # store_gripper_controller:
+    #   type: joint_trajectory_controller/JointTrajectoryController
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    control_pad_controller:
+      type: control_pad/ControlPadController
+
+    task_executor_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    cartesian_motion_controller:
+      type: cartesian_motion_controller/CartesianMotionController
+
+store_manipulator_controller:
+  ros__parameters:
+    joints:
+      # - joint1
+      - joint2
+      - joint3
+      - joint4
+      - joint5
+    command_interfaces:
+      - position
+      # - velocity
+    state_interfaces:
+      - position
+      - velocity
+    allow_nonzero_velocity_at_trajectory_end: true
+    gains:
+      # joint1:
+      #   p: 10.0
+      #   i: 0.0
+      #   d: 1.0
+      #   i_clamp: 1.0
+      #   ff_velocity_scale: 1.0
+      joint2:
+        p: 10.0
+        i: 0.0
+        d: 1.0
+        i_clamp: 1.0
+        ff_velocity_scale: 1.0
+      joint3:
+        p: 10.0
+        i: 0.0
+        d: 1.0
+        i_clamp: 1.0
+        ff_velocity_scale: 1.0
+      joint4:
+        p: 10.0
+        i: 0.0
+        d: 1.0
+        i_clamp: 1.0
+        ff_velocity_scale: 1.0
+      joint5:
+        p: 10.0
+        i: 0.0
+        d: 1.0
+        i_clamp: 1.0
+        ff_velocity_scale: 1.0
+
+store_gripper_controller:
+  ros__parameters:
+    joints:
+      - joint6
+    command_interfaces:
+      - position
+      # - velocity
+    state_interfaces:
+      - position
+      - velocity
+    allow_nonzero_velocity_at_trajectory_end: true
+    gains:
+      joint6:
+        p: 10.0
+        i: 0.0
+        d: 1.0
+        i_clamp: 1.0
+        ff_velocity_scale: 1.0
+
+control_pad_controller:
+  ros__parameters:
+    command_interfaces:
+      # - position
+      - velocity
+      - mode
+    state_interfaces:
+      - position
+      - velocity
+      - mode
+    joints:
+      - joint2
+      - joint3
+      - joint4
+      - joint5
+      # - joint6
+
+task_executor_controller:
+  ros__parameters:
+    joints:
+      # - joint1
+      - joint2
+      - joint3
+      - joint4
+      - joint5
+      # - joint6
+    command_interfaces:
+      - position
+      # - velocity
+    state_interfaces:
+      - position
+      - velocity
+    allow_nonzero_velocity_at_trajectory_end: true
+    gains:
+      # joint1:
+      #   p: 10.0
+      #   i: 0.0
+      #   d: 1.0
+      #   i_clamp: 1.0
+      #   ff_velocity_scale: 1.0
+      joint2:
+        p: 10.0
+        i: 0.0
+        d: 1.0
+        i_clamp: 1.0
+        ff_velocity_scale: 1.0
+      joint3:
+        p: 10.0
+        i: 0.0
+        d: 1.0
+        i_clamp: 1.0
+        ff_velocity_scale: 1.0
+      joint4:
+        p: 10.0
+        i: 0.0
+        d: 1.0
+        i_clamp: 1.0
+        ff_velocity_scale: 1.0
+      joint5:
+        p: 10.0
+        i: 0.0
+        d: 1.0
+        i_clamp: 1.0
+        ff_velocity_scale: 1.0
+      # joint6:
+      #   p: 10.0
+      #   i: 0.0
+      #   d: 1.0
+      #   i_clamp: 1.0
+      #   ff_velocity_scale: 1.0
+

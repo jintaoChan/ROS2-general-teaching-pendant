@@ -27,6 +27,7 @@ class MoveButton : public QPushButton
 
 public:
     explicit MoveButton(QWidget *parent = nullptr);
+    explicit MoveButton(MoveButtonType type, QWidget *parent = nullptr);
     ~MoveButton(){};
 
 

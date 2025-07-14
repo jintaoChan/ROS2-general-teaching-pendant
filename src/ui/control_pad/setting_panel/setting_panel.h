@@ -3,6 +3,11 @@
 
 #include <QWidget>
 
+enum class ControlCoordinateSystemType {
+    TOOL = 0,
+    END_EFFECTOR
+};
+
 namespace Ui {
 class SettingPanel;
 }
@@ -18,12 +23,17 @@ public:
 public:
     double getStep();
     double getVelocity();
+    ControlCoordinateSystemType getCoordinateSystem();
 
 signals:
     void on_add_to_point_pool_button_clicked();
 
+private slots:
+    void on_coordinate_selection_combobox_currentIndexChanged(int index);
+
 private:
     Ui::SettingPanel *ui;
+    ControlCoordinateSystemType m_ControlCoordinateSystemType;
 };
 
 #endif // SETTING_PANEL_H

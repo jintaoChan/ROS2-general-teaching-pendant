@@ -8,28 +8,43 @@ ControllerSwitcher::ControllerSwitcher(const rclcpp::Node::SharedPtr& node)
 
 
     // deactivate moveit controller
-    std::vector<std::string> deactivates = listActiveController();
 
-    switchController(deactivates);
+    switchController();
 }
 
 void ControllerSwitcher::switchToControlPad() const
 {
-    auto deactivates = listActiveController();
-    std::vector<std::string> activates {CONTROL_PAD_CONTROLLER_NAME};
-    switchController(deactivates, activates);
+    switchController({CONTROL_PAD_CONTROLLER_NAME});
 }
 
 void ControllerSwitcher::switchToTaskExecutor() const
 {
-    auto deactivates = listActiveController();
-    std::vector<std::string> activates {TASK_EXECUTOR_CONTROLLER_NAME};
-    switchController(deactivates, activates);
+    switchController({TASK_EXECUTOR_CONTROLLER_NAME});
 }
 
-void ControllerSwitcher::switchController(const std::vector<std::string>& deactivates, const std::vector<std::string>& activates) const
+void ControllerSwitcher::switchController(std::vector<std::string> activates) const
 {
+    std::vector<std::string> deactivates = listActiveController();
+
+    std::unordered_set<std::string> deactivateSet(deactivates.begin(), deactivates.end());
+    std::unordered_set<std::string> common;
+    for (const auto& a : activates) {
+        if (deactivateSet.count(a)) {
+            common.insert(a);
+        }
+    }
+    deactivates.erase(std::remove_if(deactivates.begin(), deactivates.end(),
+                           [&](const auto& val) { return common.count(val); }), deactivates.end());
+    activates.erase(std::remove_if(activates.begin(), activates.end(),
+                           [&](const auto& val) { return common.count(val); }), activates.end());
+
+    if (activates.empty() && deactivates.empty()) {
+        // RCLCPP_INFO(m_Node->get_logger(), "No controller to switch, skipping.");
+        return;
+    }
+
     auto request = std::make_shared<controller_manager_msgs::srv::SwitchController_Request>();
+    request->strictness = controller_manager_msgs::srv::SwitchController_Request::STRICT;
     for_each(deactivates.begin(), deactivates.end(), [&](const auto& s) {request->deactivate_controllers.push_back(s);});
     for_each(activates.begin(), activates.end(), [&](const auto& s) {request->activate_controllers.push_back(s);});
     auto response = m_ControllerSwitcher->async_send_request(request);
@@ -52,7 +67,7 @@ std::vector<std::string> ControllerSwitcher::listActiveController() const
     {
         auto controllerList = response.get()->controller;
         for(const auto& c : controllerList) {
-            if(c.name.find("controller") != std::string::npos) {
+            if(c.name.find("controller") != std::string::npos && c.state == "active" ) {
                 list.push_back(c.name);
             }
         }

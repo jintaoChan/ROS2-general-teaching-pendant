@@ -1,11 +1,16 @@
 #include <moveit/robot_trajectory/robot_trajectory.hpp>
-#include "move_executor.hpp"
+#include "move_executor.h"
 #include "controller_switcher.h"
 #include "mode_changer.h"
 
-std::atomic<bool> KeepMoving = true;
+std::atomic<bool> KeepMoving;
+MoveExecutor::MoveExecutor(const rclcpp::Node::SharedPtr& node)
+    : m_Node(node)
+{
+    m_MoveCommandSender = m_Node->create_publisher<sensor_msgs::msg::JointState>("/control_pad_move_cmd", 10);
+}
 
-void ExecuteTask(const MoveTasks &task)
+void MoveExecutor::ExecuteTask(const MoveTasks &task)
 {
     auto executePoint = [](const MovePointInfo& moveGroupInfo) {
         auto& robotDes = RobotDescription::instance();
@@ -52,7 +57,7 @@ void ExecuteTask(const MoveTasks &task)
     }
 }
 
-void StopMoving()
+void MoveExecutor::StopMoving()
 {
     auto& robotDes = RobotDescription::instance();
     KeepMoving = false;
@@ -61,4 +66,10 @@ void StopMoving()
         auto& moveGroupIF = robotDes.getMoveGroupInterfaces(group);
         moveGroupIF->stop();
     }
+}
+
+void MoveExecutor::pubMoveCommand(sensor_msgs::msg::JointState msg)
+{
+    msg.header.stamp = m_Node->now();
+    m_MoveCommandSender->publish(msg);
 }

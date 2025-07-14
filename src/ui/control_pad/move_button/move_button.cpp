@@ -6,6 +6,12 @@ MoveButton::MoveButton(QWidget *parent) :
 
 }
 
+MoveButton::MoveButton(MoveButtonType type, QWidget *parent)
+    : MoveButton(parent)
+{
+    setButtonType(type);
+}
+
 
 void MoveButton::setButtonType(MoveButtonType type)
 {

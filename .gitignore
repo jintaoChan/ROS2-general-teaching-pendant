@@ -8,3 +8,4 @@ scripts
 *.a
 *.user
 *.workspace
+.catkin_tools

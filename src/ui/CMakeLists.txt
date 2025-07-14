@@ -19,9 +19,11 @@ endif()
 set(THIS_PACKAGE_INCLUDE_DEPENDS
   ament_cmake
   rclcpp
+  magic_enum
   robotics_configs
   controller_manager
   controller_manager_msgs
+  trac_ik_lib
 )
 foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
   find_package(${Dependency} REQUIRED)
@@ -41,6 +43,8 @@ include_directories(
   control_pad/joint_widget/
   control_pad/joint_group_widget/
   control_pad/setting_panel/
+  control_pad/cartesian_dof_row/
+  control_pad/cartesian_pad/
   control_pad/control_pad/
   programmer/group_info_dialog/
   programmer/task_widget/
@@ -70,6 +74,7 @@ add_executable(${PROJECT_NAME}
 ament_target_dependencies(${PROJECT_NAME} ${THIS_PACKAGE_INCLUDE_DEPENDS} Boost)
 
 target_link_libraries(${PROJECT_NAME}
+  magic_enum::magic_enum
   Qt5::Widgets
 )
 

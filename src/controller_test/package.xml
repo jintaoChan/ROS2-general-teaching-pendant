@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>control_pad_controller</name>
+  <name>controller_test</name>
   <version>0.1.2</version>
   <description>A ros2_control interface for Synapticon motor drivers</description>
   <author email="jintao@todo.com">Elevate Robotics</author>
@@ -11,20 +11,10 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <depend>backward_ros</depend>
-  <depend>control_msgs</depend>
-  <depend>controller_interface</depend>
-  <depend>hardware_interface</depend>
-  <depend>kdl_parser</depend>
-  <depend>pluginlib</depend>
-  <depend>rclcpp_lifecycle</depend>
   <depend>rclcpp</depend>
-  <depend>rcpputils</depend>
-  <depend>realtime_tools</depend>
-  <depend>trajectory_msgs</depend>
-  <depend>sensor_msgs</depend>
   <depend>trac_ik</depend>
-  <depend>geometry_msgs</depend>
+  <depend>control_pad_controller</depend>
+
 
   <exec_depend>ethercat_driver</exec_depend>
   <exec_depend>ethercat_interface</exec_depend>

@@ -38,49 +38,47 @@ namespace control_pad
 
         controller_interface::CallbackReturn on_deactivate(
             const rclcpp_lifecycle::State &previous_state) override;
-        rclcpp::Logger get_logger() const { return *m_Logger; }
+        rclcpp::Logger get_logger() const { return *logger_; }
         void switchMode(int8_t mode);
     protected:
-        // Objects for logging
-        std::shared_ptr<rclcpp::Logger> m_Logger;
-        std::vector<std::string> m_JointNames;
-        std::vector<std::string> m_CommandInterfaceTypes;
-        std::vector<std::string> m_StateInterfaceTypes;
+        std::shared_ptr<rclcpp::Logger> logger_;
 
-        // movement msg
-        rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr m_MoveCommandSubscriber;
-        rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr m_MoveStatePublisher;
-        bool m_NewMoveMsg = false;
-        sensor_msgs::msg::JointState m_MoveMsg;
+        std::vector<std::string> joint_names_;
+        std::vector<std::string> command_interface_types_;
+        std::vector<std::string> state_interface_types_;
 
-        // mode msg
-        rclcpp::Subscription<std_msgs::msg::Int8>::SharedPtr m_ModeCommandSubscriber;
-        rclcpp::Publisher<std_msgs::msg::Int8>::SharedPtr m_ModeStatePublisher;
-        bool m_NewModeMsg = false;
+        uint8_t default_mode_;
+        uint8_t position_mode_;
+        uint8_t velocity_mode_;
+
+        rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr move_command_subscriber_;
+        rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr move_state_publisher_;
+        bool new_move_msg_ = false;
+        sensor_msgs::msg::JointState move_msg_;
+
         rclcpp::Time m_StartTime;
-        std_msgs::msg::Int8 m_ModeMsg;
 
-        std::vector<std::reference_wrapper<hardware_interface::LoanedCommandInterface>> m_JointPositionCommandInterface;
-        std::vector<std::reference_wrapper<hardware_interface::LoanedStateInterface>> m_JointPositionStateInterface;
-        std::vector<std::reference_wrapper<hardware_interface::LoanedCommandInterface>> m_JointVelocityCommandInterface;
-        std::vector<std::reference_wrapper<hardware_interface::LoanedStateInterface>> m_JointVelocityStateInterface;
-        std::vector<std::reference_wrapper<hardware_interface::LoanedCommandInterface>> m_JointModeCommandInterface;
-        std::vector<std::reference_wrapper<hardware_interface::LoanedStateInterface>> m_JointModeStateInterface;
+        std::vector<std::reference_wrapper<hardware_interface::LoanedCommandInterface>> joint_position_command_interface_;
+        std::vector<std::reference_wrapper<hardware_interface::LoanedStateInterface>> joint_position_state_interface_;
+        std::vector<std::reference_wrapper<hardware_interface::LoanedCommandInterface>> joint_velocity_command_interface_;
+        std::vector<std::reference_wrapper<hardware_interface::LoanedStateInterface>> joint_velocity_state_interface_;
+        std::vector<std::reference_wrapper<hardware_interface::LoanedCommandInterface>> joint_mode_command_interface_;
+        std::vector<std::reference_wrapper<hardware_interface::LoanedStateInterface>> joint_mode_state_interface_;
 
         std::unordered_map<
             std::string, std::vector<std::reference_wrapper<hardware_interface::LoanedCommandInterface>> *>
             m_CommandInterfaceMap = {
-                {"position", &m_JointPositionCommandInterface},
-                {"velocity", &m_JointVelocityCommandInterface},
-                {"mode", &m_JointModeCommandInterface}
+                {"position", &joint_position_command_interface_},
+                {"velocity", &joint_velocity_command_interface_},
+                {"mode", &joint_mode_command_interface_}
             };
 
         std::unordered_map<
             std::string, std::vector<std::reference_wrapper<hardware_interface::LoanedStateInterface>> *>
             m_StateInterfaceMap = {
-                {"position", &m_JointPositionStateInterface},
-                {"velocity", &m_JointVelocityStateInterface},
-                {"mode", &m_JointModeStateInterface}
+                {"position", &joint_position_state_interface_},
+                {"velocity", &joint_velocity_state_interface_},
+                {"mode", &joint_mode_state_interface_}
             };
     };
 

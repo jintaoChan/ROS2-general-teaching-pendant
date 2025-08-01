@@ -20,7 +20,7 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
   ament_cmake
   rclcpp
   magic_enum
-  robotics_configs
+  control_pad_controller
   controller_manager
   controller_manager_msgs
   trac_ik_lib
@@ -39,10 +39,10 @@ file(GLOB_RECURSE PRO_INCLUDE_DIR RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} FOLLOW_SY
 file(GLOB_RECURSE PRO_SOURCES_DIR RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} FOLLOW_SYMLINKS *.cpp)
 #搜索头文件的位置
 include_directories(
+  setting_panel/
   control_pad/move_button/
   control_pad/joint_widget/
   control_pad/joint_group_widget/
-  control_pad/setting_panel/
   control_pad/cartesian_dof_row/
   control_pad/cartesian_pad/
   control_pad/control_pad/

@@ -10,7 +10,7 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
   <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
-  <depend>robotics_configs</depend>
+  <depend>control_pad_controller</depend>
   <depend>controller_manager</depend>
   <depend>controller_manager_msgs</depend>
   <depend>magic_enum</depend>

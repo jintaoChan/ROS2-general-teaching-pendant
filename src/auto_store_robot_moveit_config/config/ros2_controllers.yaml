@@ -15,20 +15,15 @@ controller_manager:
     control_pad_controller:
       type: control_pad/ControlPadController
 
-    task_executor_controller:
-      type: joint_trajectory_controller/JointTrajectoryController
-
-    cartesian_motion_controller:
-      type: cartesian_motion_controller/CartesianMotionController
 
 store_manipulator_controller:
   ros__parameters:
     joints:
-      # - joint1
+      - joint0
+      - joint1
       - joint2
       - joint3
       - joint4
-      - joint5
     command_interfaces:
       - position
       # - velocity
@@ -37,12 +32,18 @@ store_manipulator_controller:
       - velocity
     allow_nonzero_velocity_at_trajectory_end: true
     gains:
-      # joint1:
-      #   p: 10.0
-      #   i: 0.0
-      #   d: 1.0
-      #   i_clamp: 1.0
-      #   ff_velocity_scale: 1.0
+      joint0:
+        p: 10.0
+        i: 0.0
+        d: 1.0
+        i_clamp: 1.0
+        ff_velocity_scale: 1.0
+      joint1:
+        p: 10.0
+        i: 0.0
+        d: 1.0
+        i_clamp: 1.0
+        ff_velocity_scale: 1.0
       joint2:
         p: 10.0
         i: 0.0
@@ -56,12 +57,6 @@ store_manipulator_controller:
         i_clamp: 1.0
         ff_velocity_scale: 1.0
       joint4:
-        p: 10.0
-        i: 0.0
-        d: 1.0
-        i_clamp: 1.0
-        ff_velocity_scale: 1.0
-      joint5:
         p: 10.0
         i: 0.0
         d: 1.0
@@ -89,72 +84,23 @@ store_gripper_controller:
 
 control_pad_controller:
   ros__parameters:
-    command_interfaces:
-      # - position
-      - velocity
-      - mode
-    state_interfaces:
-      - position
-      - velocity
-      - mode
-    joints:
-      - joint2
-      - joint3
-      - joint4
-      - joint5
-      # - joint6
+    mode:
+      default: 8
+      position: 8
+      velocity: 9
 
-task_executor_controller:
-  ros__parameters:
-    joints:
-      # - joint1
-      - joint2
-      - joint3
-      - joint4
-      - joint5
-      # - joint6
     command_interfaces:
       - position
       # - velocity
+      - mode
     state_interfaces:
       - position
       - velocity
-    allow_nonzero_velocity_at_trajectory_end: true
-    gains:
-      # joint1:
-      #   p: 10.0
-      #   i: 0.0
-      #   d: 1.0
-      #   i_clamp: 1.0
-      #   ff_velocity_scale: 1.0
-      joint2:
-        p: 10.0
-        i: 0.0
-        d: 1.0
-        i_clamp: 1.0
-        ff_velocity_scale: 1.0
-      joint3:
-        p: 10.0
-        i: 0.0
-        d: 1.0
-        i_clamp: 1.0
-        ff_velocity_scale: 1.0
-      joint4:
-        p: 10.0
-        i: 0.0
-        d: 1.0
-        i_clamp: 1.0
-        ff_velocity_scale: 1.0
-      joint5:
-        p: 10.0
-        i: 0.0
-        d: 1.0
-        i_clamp: 1.0
-        ff_velocity_scale: 1.0
-      # joint6:
-      #   p: 10.0
-      #   i: 0.0
-      #   d: 1.0
-      #   i_clamp: 1.0
-      #   ff_velocity_scale: 1.0
+      - mode
+    joints:
+      - joint0
+      - joint1
+      - joint2
+      - joint3
+      - joint4
 

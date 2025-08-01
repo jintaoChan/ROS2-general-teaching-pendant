@@ -4,11 +4,12 @@
 #include <QThread>
 #include <QWidget>
 #include <rclcpp/rclcpp.hpp>
+#include <QTimer>
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "move_button.h"
 #include "cartesian_pad.h"
 #include "setting_panel.h"
-#include "robot_description.h"
+#include "robot_handle.h"
 
 namespace Ui {
 class ControlPad;
@@ -19,26 +20,26 @@ class ControlPad : public QWidget
     Q_OBJECT
 
 public:
-    explicit ControlPad(QWidget *parent = nullptr);
+    explicit ControlPad(SettingPanel* setting_panel,  QWidget *parent = nullptr);
     ~ControlPad();
 
 public:
-    void recvCallback(const sensor_msgs::msg::JointState& msg);
-    void run();
+
+private:
+    void regularUpdate();
 
 public slots:
-    void MoveCommander(MoveButtonType type, MoveButtonEvent event, const std::string& jointName);
+    void MoveCommander(MoveButtonType type, MoveButtonEvent event, const std::string& jointName) const ;
     void MoveCommander(MoveButtonType type, MoveButtonEvent event, size_t idx);
 
 signals:
     void storeCurrentPointToPointPool(const MovePointInfo& point);
 
 private:
-    Ui::ControlPad *ui;
-    rclcpp::Node::SharedPtr m_Node;
-    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr m_JointStateSubscription;
-    std::unordered_map<std::string, double> m_CurrentPosition;
-    SettingPanel m_SettingPanel;
+    Ui::ControlPad *ui_;
+    QTimer* timer_;
+    JointsPosition current_position_;
+    SettingPanel* setting_panel_;
 };
 
 #endif // CONTROL_PAD_H

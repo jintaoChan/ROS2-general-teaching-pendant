@@ -10,12 +10,16 @@ SettingPanel::SettingPanel(QWidget *parent)
     ui->setupUi(this);
     QDoubleValidator * validator = new QDoubleValidator(this);
     ui->lineEdit_step->setValidator(validator);
-    ui->lineEdit_velocity->setValidator(validator);
     constexpr auto coordEntries = magic_enum::enum_entries<ControlCoordinateSystemType>();
     for(const auto& coord : coordEntries) {
         ui->coordinate_selection_combobox->addItem(QString::fromStdString(std::string(coord.second)));
     }
     ui->coordinate_selection_combobox->setCurrentText(QString::fromStdString(std::string(magic_enum::enum_name(ControlCoordinateSystemType::TOOL))));
+    ui->horizontalSlider_velocity->setMaximum(100);
+    ui->horizontalSlider_velocity->setMinimum(0);
+    QObject::connect(ui->horizontalSlider_velocity, &QSlider::valueChanged, [&](int value){ ui->label_horizontalSlider_velocity->setText(QString::number(value) + QString(" %")); });
+    ui->horizontalSlider_velocity->setValue(1);
+    ui->horizontalSlider_velocity->setValue(0);
 }
 
 SettingPanel::~SettingPanel()
@@ -23,14 +27,14 @@ SettingPanel::~SettingPanel()
     delete ui;
 }
 
-double SettingPanel::getStep()
+double SettingPanel::getStep() const
 {
     return ui->lineEdit_step->text().toDouble();
 }
 
-double SettingPanel::getVelocity()
+double SettingPanel::getVelocity() const
 {
-    return ui->lineEdit_velocity->text().toDouble();
+    return (double)ui->horizontalSlider_velocity->value() / 100;
 }
 
 ControlCoordinateSystemType SettingPanel::getCoordinateSystem()

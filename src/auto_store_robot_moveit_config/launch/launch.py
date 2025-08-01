@@ -105,7 +105,6 @@ def generate_launch_description():
         arguments=[
                 "--inactive",
                 "control_pad_controller",
-                "task_executor_controller",
                 "--param-file", str(auto_store_robot_moveit_config.package_path / "config/ros2_controllers.yaml")],
         )
     )
@@ -117,6 +116,14 @@ def generate_launch_description():
             ),
         )
     )
+    
+    # ld.add_action(
+    #     Node(
+    #         package='controller_test',
+    #         executable='controller_test',
+    #         output='screen'       # 输出到终端
+    #     )
+    # )
 
     # servo_params = {
     #     "moveit_servo": ParameterBuilder("auto_store_robot_moveit_config")

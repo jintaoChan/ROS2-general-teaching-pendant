@@ -10,7 +10,7 @@ ament_package()
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/launch")
   install(
-    DIRECTORY launch driver_config meshes urdf
+    DIRECTORY launch driver_config meshes
     DESTINATION share/${PROJECT_NAME}
     PATTERN "setup_assistant.launch" EXCLUDE)
 endif()

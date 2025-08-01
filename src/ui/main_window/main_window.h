@@ -2,7 +2,6 @@
 #define MAIN_WINDOW_H
 
 #include <QMainWindow>
-#include <joint_widget.h>
 
 namespace Ui {
 class MainWindow;

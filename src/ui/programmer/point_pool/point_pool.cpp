@@ -17,7 +17,7 @@ PointPool::PointPool(QWidget *parent)
             m_PointPoolItemFilterDelegate,
             [this](const std::string& newName){emit m_PointPoolItemFilterDelegate->itemModified("", newName);});
     connect(m_PointPoolItemFilterDelegate, &ItemFilterDelegate::itemModified, this, &PointPool::modifyPointName);
-    auto& robotDes = RobotDescription::instance();
+    auto& robotDes = RobotHandle::instance();
     MovePointInfos presetPoints = robotDes.getPresetGroupState();
     for(const auto& point : presetPoints){
         addPoint(point.first, point.second);

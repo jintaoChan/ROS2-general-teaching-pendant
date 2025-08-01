@@ -4,7 +4,7 @@
   <link name="world"/>
 
   <xacro:include filename="$(find auto_store_robot_moveit_config)/config/auto_store_robot_moveit_config.ros2_control.xacro" />
-  <xacro:include filename="$(find auto_store_robot_moveit_config)/config/robot_description.urdf.xacro" />
+  <xacro:include filename="$(find auto_store_robot_moveit_config)/config/auto_store_robot_moveit_config.urdf" />
   <xacro:motor_drive/>
   <xacro:auto_store_manipulator/>
 </robot>

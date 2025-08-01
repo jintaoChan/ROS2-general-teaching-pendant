@@ -21,8 +21,8 @@ public:
     ~SettingPanel();
 
 public:
-    double getStep();
-    double getVelocity();
+    double getStep() const;
+    double getVelocity() const;
     ControlCoordinateSystemType getCoordinateSystem();
 
 signals:

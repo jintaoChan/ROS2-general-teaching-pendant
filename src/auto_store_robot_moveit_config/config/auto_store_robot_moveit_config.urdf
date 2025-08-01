@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="auto_store_manipulator">
+    <link
+      name="link0">
+      <inertial>
+        <origin
+          xyz="0.0390468323903485 -5.007849749822E-05 0.666149999978203"
+          rpy="0 0 0" />
+        <mass
+          value="0.915667287041113" />
+        <inertia
+          ixx="0.210788669800852"
+          ixy="2.67191868730561E-11"
+          ixz="-5.30476743026929E-14"
+          iyy="0.209107067938556"
+          iyz="7.74441435651148E-10"
+          izz="0.00171950748771971" />
+      </inertial>
+      <visual>
+        <origin
+          xyz="0 0 0"
+          rpy="0 0 0" />
+        <geometry>
+          <mesh
+            filename="package://auto_store_robot_moveit_config/meshes/link0.STL" />
+        </geometry>
+        <material
+          name="">
+          <color
+            rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+        </material>
+      </visual>
+      <collision>
+        <origin
+          xyz="0 0 0"
+          rpy="0 0 0" />
+        <geometry>
+          <mesh
+            filename="package://auto_store_robot_moveit_config/meshes/link0.STL" />
+        </geometry>
+      </collision>
+    </link>
+    <link
+      name="link1">
+      <inertial>
+        <origin
+          xyz="0.0912377610962553 -7.44816839811108E-05 -0.712054978393038"
+          rpy="0 0 0" />
+        <mass
+          value="2.79709526394689" />
+        <inertia
+          ixx="0.00896235142208003"
+          ixy="-3.89324573517924E-06"
+          ixz="5.9819498516293E-05"
+          iyy="0.00594312492753922"
+          iyz="1.9245976814771E-06"
+          izz="0.00938108893014583" />
+      </inertial>
+      <visual>
+        <origin
+          xyz="0 0 0"
+          rpy="0 0 0" />
+        <geometry>
+          <mesh
+            filename="package://auto_store_robot_moveit_config/meshes/link1.STL" />
+        </geometry>
+        <material
+          name="">
+          <color
+            rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+        </material>
+      </visual>
+      <collision>
+        <origin
+          xyz="0 0 0"
+          rpy="0 0 0" />
+        <geometry>
+          <mesh
+            filename="package://auto_store_robot_moveit_config/meshes/link1.STL" />
+        </geometry>
+      </collision>
+    </link>
+    <joint name="base_joint" type="fixed">
+      <parent link="world"/>
+      <child link="link0"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <axis xyz="0 0 1"/>
+    </joint>
+    <joint
+      name="joint0"
+      type="prismatic">
+      <origin
+        xyz="0 0 1.4733"
+        rpy="0 0 0" />
+      <parent
+        link="link0" />
+      <child
+        link="link1" />
+      <axis
+        xyz="0 0 1" />
+      <limit
+        lower="-1"
+        upper="1"
+        effort="1"
+        velocity="1" />
+    </joint>
+    <link
+      name="link2">
+      <inertial>
+        <origin
+          xyz="0.115502752895315 -1.63350224105172E-06 -0.164471869393158"
+          rpy="0 0 0" />
+        <mass
+          value="1.74798826948028" />
+        <inertia
+          ixx="0.00189048939791149"
+          ixy="-2.38911025104217E-08"
+          ixz="-1.08248915624591E-06"
+          iyy="0.0192032568302459"
+          iyz="-8.32666502512512E-09"
+          izz="0.020780334611308" />
+      </inertial>
+      <visual>
+        <origin
+          xyz="0 0 0"
+          rpy="0 0 0" />
+        <geometry>
+          <mesh
+            filename="package://auto_store_robot_moveit_config/meshes/link2.STL" />
+        </geometry>
+        <material
+          name="">
+          <color
+            rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+        </material>
+      </visual>
+      <collision>
+        <origin
+          xyz="0 0 0"
+          rpy="0 0 0" />
+        <geometry>
+          <mesh
+            filename="package://auto_store_robot_moveit_config/meshes/link2.STL" />
+        </geometry>
+      </collision>
+    </link>
+    <joint
+      name="joint1"
+      type="revolute">
+      <origin
+        xyz="0.151 -5E-05 -0.63299"
+        rpy="0 0 0" />
+      <parent
+        link="link1" />
+      <child
+        link="link2" />
+      <axis
+        xyz="0 0 1" />
+      <limit
+        lower="${-pi}"
+        upper="${pi}"
+        effort="1"
+        velocity="1" />
+    </joint>
+    <link
+      name="link3">
+      <inertial>
+        <origin
+          xyz="0.0610293808623128 -1.45626209344281E-06 -0.0679647189679103"
+          rpy="0 0 0" />
+        <mass
+          value="1.19285728557599" />
+        <inertia
+          ixx="0.00273971495978063"
+          ixy="-1.13910144508034E-08"
+          ixz="-0.000102823603420657"
+          iyy="0.00544775221062904"
+          iyz="-5.85306011371481E-09"
+          izz="0.00549997596241945" />
+      </inertial>
+      <visual>
+        <origin
+          xyz="0 0 0"
+          rpy="0 0 0" />
+        <geometry>
+          <mesh
+            filename="package://auto_store_robot_moveit_config/meshes/link3.STL" />
+        </geometry>
+        <material
+          name="">
+          <color
+            rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+        </material>
+      </visual>
+      <collision>
+        <origin
+          xyz="0 0 0"
+          rpy="0 0 0" />
+        <geometry>
+          <mesh
+            filename="package://auto_store_robot_moveit_config/meshes/link3.STL" />
+        </geometry>
+      </collision>
+    </link>
+    <joint
+      name="joint2"
+      type="revolute">
+      <origin
+        xyz="0.25 0 -0.01"
+        rpy="0 0 0" />
+      <parent
+        link="link2" />
+      <child
+        link="link3" />
+      <axis
+        xyz="0 0 1" />
+      <limit
+        lower="${-pi}"
+        upper="${pi}"
+        effort="1"
+        velocity="1" />
+    </joint>
+    <link
+      name="link4">
+      <inertial>
+        <origin
+          xyz="0.00620461081250187 -2.35925969897452E-08 -0.0376183022892953"
+          rpy="0 0 0" />
+        <mass
+          value="1.14570435197768" />
+        <inertia
+          ixx="0.00256300727878425"
+          ixy="-1.14112389913263E-09"
+          ixz="6.39470119935924E-05"
+          iyy="0.00237195220506479"
+          iyz="1.50664274952324E-09"
+          izz="0.00226205290943966" />
+      </inertial>
+      <visual>
+        <origin
+          xyz="0 0 0"
+          rpy="0 0 0" />
+        <geometry>
+          <mesh
+            filename="package://auto_store_robot_moveit_config/meshes/link4.STL" />
+        </geometry>
+        <material
+          name="">
+          <color
+            rgba="1 0.843137254901961 0 1" />
+        </material>
+      </visual>
+      <collision>
+        <origin
+          xyz="0 0 0"
+          rpy="0 0 0" />
+        <geometry>
+          <mesh
+            filename="package://auto_store_robot_moveit_config/meshes/link4.STL" />
+        </geometry>
+      </collision>
+    </link>
+    <joint
+      name="joint3"
+      type="revolute">
+      <origin
+        xyz="0.1885 0 -0.0735"
+        rpy="3.1416 1.5708 0" />
+      <parent
+        link="link3" />
+      <child
+        link="link4" />
+      <axis
+        xyz="0 0 1" />
+      <limit
+        lower="${-pi}"
+        upper="${pi}"
+        effort="1"
+        velocity="1" />
+    </joint>
+    <link
+      name="link5">
+      <inertial>
+        <origin
+          xyz="0.0366285576762833 3.06280047052765E-05 -0.195045846215753"
+          rpy="0 0 0" />
+        <mass
+          value="0.189971368636763" />
+        <inertia
+          ixx="9.78227461465526E-05"
+          ixy="-2.75574109866967E-07"
+          ixz="6.61719021176031E-05"
+          iyy="0.000426486370049961"
+          iyz="6.08150068020791E-08"
+          izz="0.000330711711090952" />
+      </inertial>
+      <visual>
+        <origin
+          xyz="0 0 0"
+          rpy="0 0 0" />
+        <geometry>
+          <mesh
+            filename="package://auto_store_robot_moveit_config/meshes/link5.STL" />
+        </geometry>
+        <material
+          name="">
+          <color
+            rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+        </material>
+      </visual>
+      <collision>
+        <origin
+          xyz="0 0 0"
+          rpy="0 0 0" />
+        <geometry>
+          <mesh
+            filename="package://auto_store_robot_moveit_config/meshes/link5.STL" />
+        </geometry>
+      </collision>
+    </link>
+    <joint
+      name="joint4"
+      type="revolute">
+      <origin
+        xyz="-0.0785 0 -0.0505"
+        rpy="3.1416 1.5708 0" />
+      <parent
+        link="link4" />
+      <child
+        link="link5" />
+      <axis
+        xyz="0 0 1" />
+      <limit
+        lower="${-pi}"
+        upper="${pi}"
+        effort="1"
+        velocity="1" />
+    </joint>
+  </xacro:macro>
+</robot>

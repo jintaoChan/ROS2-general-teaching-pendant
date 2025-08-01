@@ -12,21 +12,21 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
   controller_interface
   pluginlib
   rclcpp
+  moveit_core
+  moveit_ros_planning
+  moveit_ros_planning_interface
   rclcpp_lifecycle
+  controller_manager
+  controller_manager_msgs
+  std_msgs
   trajectory_msgs
   sensor_msgs
+  trac_ik
+  ament_cmake
+  backward_ros
+  geometry_msgs
 )
-# Specify the required version of ros2_control
-find_package(controller_manager 4.0.0)
-# Handle the case where the required version is not found
-if(NOT controller_manager_FOUND)
-  message(FATAL_ERROR "ros2_control version 4.0.0 or higher is required. "
-  "Are you using the correct branch of the ros2_control_demos repository?")
-endif()
 
-# find dependencies
-find_package(backward_ros REQUIRED)
-find_package(ament_cmake REQUIRED)
 
 foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
   find_package(${Dependency} REQUIRED)
@@ -37,11 +37,19 @@ endforeach()
 add_library(${PROJECT_NAME}
   SHARED
   ${CMAKE_CURRENT_SOURCE_DIR}/src/control_pad_controller.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/move_executor/move_executor.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/controller_switcher/controller_switcher.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/kinematics_plugin/kinematics_plugin.cpp
 )
 
 
 target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/move_executor>
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/controller_switcher>
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/kinematics_plugin>
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/robot_handle>
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/utils>
   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
 )
 ament_target_dependencies( ${PROJECT_NAME}  ${THIS_PACKAGE_INCLUDE_DEPENDS})
@@ -54,6 +62,13 @@ install(TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
+)
+
+file(GLOB_RECURSE HEADER_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} FOLLOW_SYMLINKS *.h *.hpp)
+
+install(
+  FILES ${HEADER_FILES}
+  DESTINATION include/${PROJECT_NAME}
 )
 
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)

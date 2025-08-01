@@ -12,21 +12,27 @@
 
 #include "control_pad_controller.hpp"
 
+
 using config_type = controller_interface::interface_configuration_type;
 
 namespace control_pad
 {
-    ControlPadController::ControlPadController() : controller_interface::ControllerInterface() {}
+    ControlPadController::ControlPadController() : controller_interface::ControllerInterface(){}
 
     controller_interface::CallbackReturn ControlPadController::on_init()
     {
-        m_Logger = std::make_shared<rclcpp::Logger>(rclcpp::get_logger("ControlPadController"));
+        logger_ = std::make_shared<rclcpp::Logger>(rclcpp::get_logger("ControlPadController"));
         // should have error handling
-        m_JointNames = auto_declare<std::vector<std::string>>("joints", m_JointNames);
-        m_CommandInterfaceTypes =
-            auto_declare<std::vector<std::string>>("command_interfaces", m_CommandInterfaceTypes);
-        m_StateInterfaceTypes =
-            auto_declare<std::vector<std::string>>("state_interfaces", m_StateInterfaceTypes);
+        joint_names_ = auto_declare<std::vector<std::string>>("joints", joint_names_);
+        command_interface_types_ =
+            auto_declare<std::vector<std::string>>("command_interfaces", command_interface_types_);
+        state_interface_types_ =
+            auto_declare<std::vector<std::string>>("state_interfaces", state_interface_types_);
+
+        default_mode_ = auto_declare<uint8_t>("mode.default", default_mode_);
+        position_mode_ = auto_declare<uint8_t>("mode.position", position_mode_);
+        velocity_mode_ = auto_declare<uint8_t>("mode.velocity", velocity_mode_);
+
 
         return CallbackReturn::SUCCESS;
     }
@@ -36,10 +42,10 @@ namespace control_pad
     {
         controller_interface::InterfaceConfiguration conf = {config_type::INDIVIDUAL, {}};
 
-        conf.names.reserve(m_JointNames.size() * m_CommandInterfaceTypes.size());
-        for (const auto &joint_name : m_JointNames)
+        conf.names.reserve(joint_names_.size() * command_interface_types_.size());
+        for (const auto &joint_name : joint_names_)
         {
-            for (const auto &interface_type : m_CommandInterfaceTypes)
+            for (const auto &interface_type : command_interface_types_)
             {
                 conf.names.push_back(joint_name + "/" + interface_type);
             }
@@ -52,10 +58,10 @@ namespace control_pad
     {
         controller_interface::InterfaceConfiguration conf = {config_type::INDIVIDUAL, {}};
 
-        conf.names.reserve(m_JointNames.size() * m_StateInterfaceTypes.size());
-        for (const auto &joint_name : m_JointNames)
+        conf.names.reserve(joint_names_.size() * state_interface_types_.size());
+        for (const auto &joint_name : joint_names_)
         {
-            for (const auto &interface_type : m_StateInterfaceTypes)
+            for (const auto &interface_type : state_interface_types_)
             {
                 conf.names.push_back(joint_name + "/" + interface_type);
             }
@@ -69,22 +75,12 @@ namespace control_pad
         auto moveCallback =
             [this](const std::shared_ptr<sensor_msgs::msg::JointState> msg) -> void
         {
-            m_MoveMsg = *msg;
-            m_NewMoveMsg = true;
+            move_msg_ = *msg;
+            new_move_msg_ = true;
         };
         
-        m_MoveStatePublisher = get_node()->create_publisher<sensor_msgs::msg::JointState>("control_pad_move_state", 10);
-        m_MoveCommandSubscriber = get_node()->create_subscription<sensor_msgs::msg::JointState>("control_pad_move_cmd", rclcpp::SystemDefaultsQoS(), moveCallback);
-
-        auto modeCallback =
-            [this](const std::shared_ptr<std_msgs::msg::Int8> msg) -> void
-        {
-            m_ModeMsg = *msg;
-            m_NewModeMsg = true;
-        };
-
-        m_ModeStatePublisher = get_node()->create_publisher<std_msgs::msg::Int8>("control_pad_mode_state", 10);
-        m_ModeCommandSubscriber = get_node()->create_subscription<std_msgs::msg::Int8>("control_pad_mode_cmd", rclcpp::SystemDefaultsQoS(), modeCallback);
+        move_state_publisher_ = get_node()->create_publisher<sensor_msgs::msg::JointState>("control_pad_controller/control_pad_move_state", 10);
+        move_command_subscriber_ = get_node()->create_subscription<sensor_msgs::msg::JointState>("control_pad_controller/control_pad_move_cmd", rclcpp::SystemDefaultsQoS(), moveCallback);
 
         return CallbackReturn::SUCCESS;
     }
@@ -92,12 +88,12 @@ namespace control_pad
     controller_interface::CallbackReturn ControlPadController::on_activate(const rclcpp_lifecycle::State &)
     {
         // clear out vectors in case of restart
-        m_JointPositionCommandInterface.clear();
-        m_JointPositionStateInterface.clear();
-        m_JointVelocityCommandInterface.clear();
-        m_JointVelocityStateInterface.clear();
-        m_JointModeCommandInterface.clear();
-        m_JointModeStateInterface.clear();
+        joint_position_command_interface_.clear();
+        joint_position_state_interface_.clear();
+        joint_velocity_command_interface_.clear();
+        joint_velocity_state_interface_.clear();
+        joint_mode_command_interface_.clear();
+        joint_mode_state_interface_.clear();
         // assign command interfaces
         for (auto &interface : command_interfaces_)
         {
@@ -109,7 +105,7 @@ namespace control_pad
         {
             m_StateInterfaceMap[interface.get_interface_name()]->push_back(interface);
         }
-        switchMode(8);
+        switchMode(default_mode_);
         return CallbackReturn::SUCCESS;
     }
 
@@ -119,67 +115,42 @@ namespace control_pad
     {
 
         // Publish joint state
-        {
-            sensor_msgs::msg::JointState jointState;
-            for(const auto& state : m_JointPositionStateInterface){
-                jointState.position.push_back(state.get().get_optional().value());
-                // RCLCPP_INFO(get_logger(), "Getting current position\t%s: %f", std::string(state.get().get_name()).c_str(), jointState.position.back());
-            }
-            for(const auto& state : m_JointVelocityStateInterface){
-                jointState.velocity.push_back(state.get().get_optional().value());
-                // RCLCPP_INFO(get_logger(), "Getting current velocity\t%s: %f", std::string(state.get().get_name()).c_str(), jointState.velocity.back());
-            }
-            m_MoveStatePublisher->publish(jointState);
+        sensor_msgs::msg::JointState joint_state;
+        for(const auto& state : joint_position_state_interface_){
+            joint_state.position.push_back(state.get().get_optional().value());
+            // RCLCPP_INFO(get_logger(), "Getting current position\t%s: %f", std::string(state.get().get_name()).c_str(), joint_state.position.back());
         }
-
-        {
-            std_msgs::msg::Int8 modeStates;
-            std::vector<double> modes;
-            for(const auto& state : m_JointModeStateInterface){
-                modes.push_back(state.get().get_value());
-                // RCLCPP_INFO(get_logger(), "Getting current position\t%s: %f", std::string(state.get().get_name()).c_str(), jointState.position.back());
-            }
-            auto first = modes.front();
-            if (std::all_of(modes.begin(), modes.end(), [first](auto val) { return val == first; })) {
-                modeStates.data = first;
-                m_ModeStatePublisher->publish(modeStates);
-            }
-            else {
-                RCLCPP_ERROR(get_logger(), "Joint Modes differ from each other!");
-            }
+        for(const auto& state : joint_velocity_state_interface_){
+            joint_state.velocity.push_back(state.get().get_optional().value());
+            // RCLCPP_INFO(get_logger(), "Getting current velocity\t%s: %f", std::string(state.get().get_name()).c_str(), joint_state.velocity.back());
         }
+        move_state_publisher_->publish(joint_state);
 
 
-
-        if (m_NewModeMsg)
+        if (new_move_msg_)
         {
             m_StartTime = time;
-            m_NewModeMsg = false;
-            switchMode(m_ModeMsg.data);
-        }
-
-        if (m_NewMoveMsg)
-        {
-            m_StartTime = time;
-            m_NewMoveMsg = false;
-            if(m_MoveMsg.name.size() == m_MoveMsg.position.size() && !m_JointPositionCommandInterface.empty()) {
-                for(size_t i = 0 ; i < m_MoveMsg.name.size() ; ++i) {
-                    auto ifIdx = std::find(m_JointNames.begin(), m_JointNames.end(), m_MoveMsg.name[i]);
-                    if(ifIdx != m_JointNames.end()){
-                        m_JointPositionCommandInterface[ifIdx - m_JointNames.begin()].get().set_value(m_MoveMsg.position[i]);
+            new_move_msg_ = false;
+            if(move_msg_.name.size() == move_msg_.position.size() && !joint_position_command_interface_.empty()) {
+                switchMode(position_mode_);
+                for(size_t i = 0 ; i < move_msg_.name.size() ; ++i) {
+                    auto ifIdx = std::find(joint_names_.begin(), joint_names_.end(), move_msg_.name[i]);
+                    if(ifIdx != joint_names_.end()){
+                        joint_position_command_interface_[ifIdx - joint_names_.begin()].get().set_value(move_msg_.position[i]);
                     }
                 }
             }
-            else if (m_MoveMsg.name.size() == m_MoveMsg.velocity.size() && !m_JointVelocityCommandInterface.empty()){
-                for(size_t i = 0 ; i < m_MoveMsg.name.size() ; ++i) {
-                    auto ifIdx = std::find(m_JointNames.begin(), m_JointNames.end(), m_MoveMsg.name[i]);
-                    if(ifIdx != m_JointNames.end()){
-                        m_JointVelocityCommandInterface[ifIdx - m_JointNames.begin()].get().set_value(m_MoveMsg.velocity[i]);
+            else if (move_msg_.name.size() == move_msg_.velocity.size() && !joint_velocity_command_interface_.empty()){
+                switchMode(velocity_mode_);
+                for(size_t i = 0 ; i < move_msg_.name.size() ; ++i) {
+                    auto ifIdx = std::find(joint_names_.begin(), joint_names_.end(), move_msg_.name[i]);
+                    if(ifIdx != joint_names_.end()){
+                        joint_velocity_command_interface_[ifIdx - joint_names_.begin()].get().set_value(move_msg_.velocity[i]);
                     }
                 }
             }
             else {
-                RCLCPP_WARN(get_logger(), "Invalid message! name.size(): %d   position.size(): %d   velocity.size(): %d", m_MoveMsg.name.size(), m_MoveMsg.position.size(), m_MoveMsg.velocity.size());
+                RCLCPP_WARN(get_logger(), "Invalid message! name.size(): %d   position.size(): %d   velocity.size(): %d", move_msg_.name.size(), move_msg_.position.size(), move_msg_.velocity.size());
             }
         }
 
@@ -199,15 +170,15 @@ namespace control_pad
         switch(mode){
             case 0:
             case 8:
-                for(size_t i = 0; i < m_JointPositionCommandInterface.size(); ++i) {
-                    m_JointPositionCommandInterface[i].get().set_value(m_JointPositionStateInterface[i].get().get_optional().value());
+                for(size_t i = 0; i < joint_position_command_interface_.size(); ++i) {
+                    joint_position_command_interface_[i].get().set_value(joint_position_state_interface_[i].get().get_optional().value());
                 }
             case 9:
-                for(size_t i = 0; i < m_JointVelocityCommandInterface.size(); ++i) {
-                    m_JointVelocityCommandInterface[i].get().set_value(0.0);
+                for(size_t i = 0; i < joint_velocity_command_interface_.size(); ++i) {
+                    joint_velocity_command_interface_[i].get().set_value(0.0);
                 }
-                for(size_t i = 0; i < m_JointModeCommandInterface.size(); ++i) {
-                    m_JointModeCommandInterface[i].get().set_value((double)mode);
+                for(size_t i = 0; i < joint_mode_command_interface_.size(); ++i) {
+                    joint_mode_command_interface_[i].get().set_value((double)mode);
                 }
                 break;
             default:

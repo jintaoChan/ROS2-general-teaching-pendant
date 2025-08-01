@@ -24,6 +24,10 @@ public:
         return *m_Instance;
     }
 
+    static void destroy() {
+        m_Instance.release();
+    }
+
 protected:
     Singleton() = default;
     ~Singleton() = default;

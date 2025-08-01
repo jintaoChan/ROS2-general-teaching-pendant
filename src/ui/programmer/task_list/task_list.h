@@ -37,7 +37,7 @@ private:
     Ui::TaskList *ui;
     QStandardItemModel* m_Model;
     ItemFilterDelegate* m_ItemFilterDelegate;
-    std::map<std::string, QStandardItemModel*> m_TaskLists;
+    std::unordered_map<std::string, QStandardItemModel*> m_TaskLists;
 };
 
 

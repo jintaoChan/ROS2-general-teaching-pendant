@@ -5,11 +5,12 @@
 #include "group_info_dialog.h"
 #include "task_widget.h"
 #include "ui_task_widget.h"
-#include "robot_description.h"
+#include "robot_handle.h"
 
-TaskWidget::TaskWidget(QWidget *parent)
+TaskWidget::TaskWidget(SettingPanel* setting_panel, QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::TaskWidget)
+    , setting_panel_(setting_panel)
 {
     ui->setupUi(this);
     connect(ui->task_list, &QTreeView::doubleClicked, this, &TaskWidget::on_task_item_clicked);
@@ -103,7 +104,7 @@ void TaskWidget::on_execute_button_clicked()
         }
         task.push_back({name, points});
     }
-    QtConcurrent::run(&MoveExecutor::instance(), &MoveExecutor::ExecuteTask, task);
+    QtConcurrent::run(&MoveExecutor::ExecuteTask, task, setting_panel_->getVelocity());
 }
 
 
@@ -116,6 +117,6 @@ void TaskWidget::on_delete_task_button_clicked()
 
 void TaskWidget::on_stop_button_clicked()
 {
-    QtConcurrent::run(&MoveExecutor::instance(), &MoveExecutor::StopMoving);
+    QtConcurrent::run(&MoveExecutor::StopMoving);
 }
 

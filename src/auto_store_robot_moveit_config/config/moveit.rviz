@@ -5,8 +5,10 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /MotionPlanning1
+        - /MotionPlanning1/Scene Geometry1
         - /MotionPlanning1/Scene Robot1
         - /MotionPlanning1/Planning Request1
+        - /MotionPlanning1/Planned Path1
       Splitter Ratio: 0.5
     Tree Height: 747
   - Class: rviz_common/Help
@@ -37,7 +39,7 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: true
-    - Acceleration_Scaling_Factor: 0.1
+    - Acceleration_Scaling_Factor: 1
       Class: moveit_rviz_plugin/MotionPlanning
       Enabled: true
       Move Group Namespace: ""
@@ -68,11 +70,6 @@ Visualization Manager:
           Expand Link Details: false
           Expand Tree: false
           Link Tree Style: Links in Alphabetic Order
-          base_link:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
           link0:
             Alpha: 1
             Show Axes: false
@@ -103,11 +100,6 @@ Visualization Manager:
             Show Axes: false
             Show Trail: false
             Value: true
-          link6:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
           world:
             Alpha: 1
             Show Axes: false
@@ -116,7 +108,7 @@ Visualization Manager:
         Robot Alpha: 0.5
         Robot Color: 150; 50; 150
         Show Robot Collision: false
-        Show Robot Visual: true
+        Show Robot Visual: false
         Show Trail: false
         State Display Time: 0.05 s
         Trail Step Size: 1
@@ -158,11 +150,6 @@ Visualization Manager:
           Expand Link Details: false
           Expand Tree: false
           Link Tree Style: Links in Alphabetic Order
-          base_link:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
           link0:
             Alpha: 1
             Show Axes: false
@@ -193,11 +180,6 @@ Visualization Manager:
             Show Axes: false
             Show Trail: false
             Value: true
-          link6:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
           world:
             Alpha: 1
             Show Axes: false
@@ -206,11 +188,11 @@ Visualization Manager:
         Show Robot Collision: false
         Show Robot Visual: true
       Value: true
-      Velocity_Scaling_Factor: 0.1
+      Velocity_Scaling_Factor: 1
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: base_link
+    Fixed Frame: world
     Frame Rate: 120
   Name: root
   Tools:
@@ -241,7 +223,7 @@ Visualization Manager:
       Name: Current View
       Near Clip Distance: 0.009999999776482582
       Pitch: 1.0049995183944702
-      Target Frame: base_link
+      Target Frame: world
       Value: Orbit (rviz_default_plugins)
       Yaw: 1.18700110912323
     Saved: ~
@@ -257,7 +239,7 @@ Window Geometry:
     collapsed: false
   MotionPlanning - Trajectory Slider:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000100000000000002b400000371fc0200000005fb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000004400fffffffb000000100044006900730070006c006100790073000000003f00000371000000cc00fffffffb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e0067000000003f000003710000019600fffffffb0000000800480065006c0070000000029a0000006e0000006f00fffffffb0000000a00560069006500770073000000003f00000371000000a900ffffff000004380000037100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000100000000000002b400000371fc0200000005fb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c0069006400650072000000003f0000009a0000001700000017fb000000100044006900730070006c006100790073000000003f00000371000000cc00fffffffb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e006700000001bf000001f10000019600fffffffb0000000800480065006c0070000000029a0000006e0000006f00fffffffb0000000a00560069006500770073000000003f00000371000000a900ffffff000004380000037100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Views:
     collapsed: false
   Width: 1080

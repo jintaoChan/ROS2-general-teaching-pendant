@@ -28,6 +28,7 @@ public:
     void moveJointPositionAbsolutely(const JointsPosition& pos);
 
     geometry_msgs::msg::PoseStamped getCurrentCartesianPose();
+    void selectCoordinateSystem(const ControlCoordinateSystemType& coord_sys);
 
 private:
     void cartesianJogCallback();
@@ -45,6 +46,8 @@ private:
 private:
     rclcpp::Node::SharedPtr node_;
     urdf::Model urdf_model_;
+    std::string root_frame_id_;
+    std::string current_frame_id_;
     KDL::Tree kdl_tree_;
     KDL::Chain kdl_chain_;
     size_t joints_num_;
@@ -63,6 +66,7 @@ private:
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pose_pub_;
     JointsVelocity joint_velocity_limit_;
     KDL::JntArray current_joint_position_;
+    KDL::Rotation selected_coord_system_;
     geometry_msgs::msg::PoseStamped current_pose_;
     geometry_msgs::msg::PoseStamped stored_pose_;
     sensor_msgs::msg::JointState stored_joint_position_;

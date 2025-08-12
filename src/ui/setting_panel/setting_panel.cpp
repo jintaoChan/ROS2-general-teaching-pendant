@@ -2,6 +2,7 @@
 #include <magic_enum/magic_enum.hpp>
 #include "setting_panel.h"
 #include "ui_setting_panel.h"
+#include "kinematics_plugin.h"
 
 SettingPanel::SettingPanel(QWidget *parent)
     : QWidget(parent)
@@ -14,7 +15,10 @@ SettingPanel::SettingPanel(QWidget *parent)
     for(const auto& coord : coordEntries) {
         ui->coordinate_selection_combobox->addItem(QString::fromStdString(std::string(coord.second)));
     }
-    ui->coordinate_selection_combobox->setCurrentText(QString::fromStdString(std::string(magic_enum::enum_name(ControlCoordinateSystemType::TOOL))));
+    QObject::connect(ui->coordinate_selection_combobox, &QComboBox::currentTextChanged, [](const auto& text) {
+        KinematicsPlugin::instance().selectCoordinateSystem(magic_enum::enum_cast<ControlCoordinateSystemType>(text.toStdString()).value());
+    });
+    ui->coordinate_selection_combobox->setCurrentText(QString::fromStdString(std::string(magic_enum::enum_name(ControlCoordinateSystemType::Tool))));
     ui->horizontalSlider_velocity->setMaximum(100);
     ui->horizontalSlider_velocity->setMinimum(0);
     QObject::connect(ui->horizontalSlider_velocity, &QSlider::valueChanged, [&](int value){ ui->label_horizontalSlider_velocity->setText(QString::number(value) + QString(" %")); });

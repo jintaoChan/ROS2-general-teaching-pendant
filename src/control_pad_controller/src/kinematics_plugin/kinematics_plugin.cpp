@@ -11,7 +11,9 @@ KinematicsPlugin::KinematicsPlugin(const rclcpp::Node::SharedPtr& node)
     auto param = AcquireParam<std::string>("/robot_state_publisher", "robot_description");
     urdf_model_.initString(param);
     kdl_parser::treeFromUrdfModel(urdf_model_, kdl_tree_);
-    kdl_tree_.getChain(RobotHandle::instance().getFrameID(), RobotHandle::instance().getRobotArmEndLinkName(), kdl_chain_);
+    root_frame_id_ = RobotHandle::instance().getFrameID();
+    current_frame_id_ = root_frame_id_;
+    kdl_tree_.getChain(root_frame_id_, RobotHandle::instance().getRobotArmEndLinkName(), kdl_chain_);
     fk_solver_ = std::make_unique<KDL::ChainFkSolverPos_recursive>(kdl_chain_);
     ik_velocity_solver_ = std::make_unique<KDL::ChainIkSolverVel_pinv>(kdl_chain_);
     joints_num_ = kdl_chain_.getNrOfJoints();
@@ -35,7 +37,7 @@ KinematicsPlugin::KinematicsPlugin(const rclcpp::Node::SharedPtr& node)
         ++idx;
     }
     ik_solver_ = std::make_unique<KDL::ChainIkSolverPos_NR_JL>(kdl_chain_, joints_limit_min, joints_limit_max, *fk_solver_, *ik_velocity_solver_, 200, 1e-5);
-    current_pose_.header.frame_id = RobotHandle::instance().getFrameID();
+    current_pose_.header.frame_id = root_frame_id_;
 
     cartesian_jog_timer_ = node_->create_wall_timer(milliseconds(RobotHandle::instance().getControllerUpdatePeriod()), std::bind(&KinematicsPlugin::cartesianJogCallback, this));
     cartesian_jog_timer_->cancel();
@@ -90,14 +92,19 @@ void KinematicsPlugin::twistRobot(const std::array<double, 6> &velocity_arr) {
 }
 
 void KinematicsPlugin::twistRobot(const geometry_msgs::msg::Twist &twist_msg) {
-    twist_msg_ = twist_msg;
     static const geometry_msgs::msg::Vector3 zero_vec{};
     if (twist_msg.angular == zero_vec && twist_msg.linear == zero_vec) {
         cartesian_jog_timer_->cancel();
-        RobotHandle::instance().moveJointByAbsPosition(RobotHandle::instance().getCurrentJointPosition());
     }
     else {
+        twist_msg_ = twist_msg;
         stored_pose_ = current_pose_;
+        if(current_frame_id_ == root_frame_id_) {
+            selected_coord_system_ = KDL::Rotation::Identity();
+        }
+        else {
+            selected_coord_system_ = KDL::Rotation::Quaternion(stored_pose_.pose.orientation.x, stored_pose_.pose.orientation.y, stored_pose_.pose.orientation.z, stored_pose_.pose.orientation.w);
+        }
         cartesian_jog_timer_->reset();
     }
 }
@@ -147,6 +154,18 @@ geometry_msgs::msg::PoseStamped KinematicsPlugin::getCurrentCartesianPose()
     return current_pose_;
 }
 
+void KinematicsPlugin::selectCoordinateSystem(const ControlCoordinateSystemType& coord_sys)
+{
+    switch(coord_sys) {
+        case ControlCoordinateSystemType::Tool:
+            current_frame_id_ = RobotHandle::instance().getRobotArmEndLinkName();
+            break;
+        case ControlCoordinateSystemType::Base:
+            current_frame_id_ = root_frame_id_;
+            break;
+    }
+}
+
 void KinematicsPlugin::cartesianJogCallback()
 {
     has_pending_cartesian_jog_task_ = true;
@@ -169,13 +188,19 @@ void KinematicsPlugin::processCartesianJog()
 
     while (!is_ok && velocity_divider < max_velocity_divider) {
         KDL::Frame target_pose = target_pose_start;
+        auto transformed_linear_vel = selected_coord_system_ * KDL::Vector(twist_msg_.linear.x, twist_msg_.linear.y, twist_msg_.linear.z);
+        auto vx = transformed_linear_vel(0);
+        auto vy = transformed_linear_vel(1);
+        auto vz = transformed_linear_vel(2);
 
-        target_pose.p.x(target_pose.p.x() + time_diff * twist_msg_.linear.x / velocity_divider);
-        target_pose.p.y(target_pose.p.y() + time_diff * twist_msg_.linear.y / velocity_divider);
-        target_pose.p.z(target_pose.p.z() + time_diff * twist_msg_.linear.z / velocity_divider);
-        target_pose.M.DoRotX(time_diff * twist_msg_.angular.x / velocity_divider);
-        target_pose.M.DoRotY(time_diff * twist_msg_.angular.y / velocity_divider);
-        target_pose.M.DoRotZ(time_diff * twist_msg_.angular.z / velocity_divider);
+        target_pose.p.x(target_pose.p.x() + time_diff * vx / velocity_divider);
+        target_pose.p.y(target_pose.p.y() + time_diff * vy / velocity_divider);
+        target_pose.p.z(target_pose.p.z() + time_diff * vz / velocity_divider);
+        target_pose.M = selected_coord_system_ * 
+                        KDL::Rotation::RotX(time_diff * twist_msg_.angular.x / velocity_divider) * 
+                        KDL::Rotation::RotY(time_diff * twist_msg_.angular.y / velocity_divider) *
+                        KDL::Rotation::RotZ(time_diff * twist_msg_.angular.z / velocity_divider) * 
+                        selected_coord_system_.Inverse() * target_pose.M;
     
         auto ik_ret = ik_solver_->CartToJnt(current_joint_position_, target_pose, target_joints_value);
         if (ik_ret < 0) {
@@ -195,7 +220,6 @@ void KinematicsPlugin::processCartesianJog()
                 velocity_divider *= 2;
                 continue;
             } else {
-                stored_pose_ = current_pose_;
                 is_ok = true;
             }
         }

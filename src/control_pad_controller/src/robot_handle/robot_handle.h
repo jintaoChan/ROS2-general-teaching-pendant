@@ -9,6 +9,11 @@
 #include "functional.hpp"
 #include "controller_switcher.h"
 
+enum class ControlCoordinateSystemType {
+    Base = 0,
+    Tool
+};
+
 enum class MoveTypeEnum : char {
     POSE = 0, //position + posture
     POSITION,

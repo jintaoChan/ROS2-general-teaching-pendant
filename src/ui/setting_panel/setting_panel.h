@@ -2,11 +2,7 @@
 #define SETTING_PANEL_H
 
 #include <QWidget>
-
-enum class ControlCoordinateSystemType {
-    TOOL = 0,
-    END_EFFECTOR
-};
+#include "robot_handle.h"
 
 namespace Ui {
 class SettingPanel;

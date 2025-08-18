@@ -251,22 +251,23 @@ void KinematicsPlugin::processJointJog()
         const auto& joint_name = target_joint_position_.name[i];
         const auto& max_vel = joints_vel_limit.at(joint_name).joint_value;
         const auto& acc = joints_acc_limit.at(joint_name).joint_value;
-        const auto& dec = joints_dec_limit.at(joint_name).joint_value;
+        const auto& dec = std::abs(joints_dec_limit.at(joint_name).joint_value);
         auto distance = target_joint_position_.position[i] - stored_joint_position_.position[i];
         double sign = distance > 0 ? 1 : -1;
         distance *= sign;
-        double time_to_max_vel = max_vel / acc;
-        double distance_to_max_vel = 0.5 * (acc + dec) * time_to_max_vel * time_to_max_vel;
+        double time_to_acc = max_vel / acc;
+        double time_to_dec = max_vel / dec;
+        double distance_to_max_vel = 0.5 * (acc * time_to_acc * time_to_acc + dec * time_to_dec * time_to_dec);
         if(distance < distance_to_max_vel) {
-            double time_to_dec = std::sqrt(2 * distance / (acc + acc * acc / dec));
-            double total_time = time_to_dec + acc * time_to_dec / dec;
-            if(time_diff < time_to_dec) {
+            double max_vel_time = std::sqrt(2 * distance / (acc + acc * acc / dec));
+            double total_time = max_vel_time + acc * max_vel_time / dec;
+            if(time_diff < max_vel_time) {
                 position_to_send[joint_name].joint_value = stored_joint_position_.position[i] + sign * 0.5 * acc * time_diff * time_diff;
             }
             else if (time_diff < total_time) {
-                position_to_send[joint_name].joint_value = stored_joint_position_.position[i] +
-                                                           sign * 0.5 * acc * time_to_dec * time_to_dec +
-                                                           sign * 0.5 * dec * (time_diff - time_to_dec) * (time_diff - time_to_dec);
+                position_to_send[joint_name].joint_value = stored_joint_position_.position[i] + 
+                                                           sign * distance - 
+                                                           sign * 0.5 * dec * (total_time - time_diff) * (total_time - time_diff);
             }
             else {
                 position_to_send[joint_name].joint_value = target_joint_position_.position[i];
@@ -274,17 +275,19 @@ void KinematicsPlugin::processJointJog()
             }
         }
         else {
-            double total_time = distance - 0.5 * (acc + dec) * time_to_max_vel * time_to_max_vel;
-            if(time_diff < time_to_max_vel) {
+            double total_time = (distance - distance_to_max_vel) / max_vel + time_to_dec + time_to_dec;
+            if(time_diff < time_to_acc) {
                 position_to_send[joint_name].joint_value = stored_joint_position_.position[i] + sign * 0.5 * acc * time_diff * time_diff;
             }
-            else if(time_diff < total_time - max_vel / dec) {
+            else if(time_diff < total_time - time_to_dec) {
                 position_to_send[joint_name].joint_value = stored_joint_position_.position[i] +
-                                                           sign * 0.5 * acc * time_to_max_vel * time_to_max_vel +
-                                                           sign * max_vel * (time_diff - time_to_max_vel);
+                                                           sign * 0.5 * acc * time_to_acc * time_to_acc +
+                                                           sign * max_vel * (time_diff - time_to_acc);
             }
             else if(time_diff < total_time){
-                position_to_send[joint_name].joint_value = distance - sign * 0.5 * dec * (total_time - time_diff) * (total_time - time_diff);
+                position_to_send[joint_name].joint_value = stored_joint_position_.position[i] + 
+                                                           sign * distance - 
+                                                           sign * 0.5 * dec * (total_time - time_diff) * (total_time - time_diff);
             }
             else {
                 position_to_send[joint_name].joint_value = target_joint_position_.position[i];

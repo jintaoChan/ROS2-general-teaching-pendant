@@ -1,7 +1,5 @@
 #pragma once
 
-#pragma once
-
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -39,7 +37,7 @@ namespace control_pad
         controller_interface::CallbackReturn on_deactivate(
             const rclcpp_lifecycle::State &previous_state) override;
         rclcpp::Logger get_logger() const { return *logger_; }
-        void switchMode(int8_t mode);
+        virtual void switchMode(int8_t mode);
     protected:
         std::shared_ptr<rclcpp::Logger> logger_;
 
@@ -50,6 +48,7 @@ namespace control_pad
         uint8_t default_mode_;
         uint8_t position_mode_;
         uint8_t velocity_mode_;
+        uint8_t current_mode_;
 
         rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr move_command_subscriber_;
         rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr move_state_publisher_;

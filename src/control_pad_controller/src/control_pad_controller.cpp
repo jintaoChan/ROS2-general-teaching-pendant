@@ -167,6 +167,7 @@ namespace control_pad
 
     void ControlPadController::switchMode(int8_t mode)
     {
+        current_mode_ = mode;
         switch(mode){
             case 0:
             case 8:

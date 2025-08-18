@@ -1,5 +1,6 @@
 #include "controller_switcher.h"
 #include "functional.hpp"
+#include "kinematics_plugin.h"
 
 ControllerSwitcher::ControllerSwitcher(const rclcpp::Node::SharedPtr& node)
 : node_(node)
@@ -24,6 +25,7 @@ void ControllerSwitcher::switchToControlPad()
 
 void ControllerSwitcher::switchToTaskExecutor()
 {
+    KinematicsPlugin::instance().moveJointPositionAbsolutely(RobotHandle::instance().getCurrentJointPosition());
     switchController({MOVE_GROUP_CONTROLLER_NAMES});
 }
 

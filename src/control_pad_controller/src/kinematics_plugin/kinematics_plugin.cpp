@@ -127,11 +127,14 @@ void KinematicsPlugin::moveJointPositionAbsolutely(const JointsPosition &pos)
     stored_joint_position_.position.clear();
     target_joint_position_.position.clear();
     for(const auto& p: pos) {
-        target_joint_position_.position.push_back(p.second.joint_value);
-        target_joint_position_.name.push_back(p.first);
-        auto idx = std::distance(joints_names_.begin(), std::find(joints_names_.begin(), joints_names_.end(), p.first));
-        stored_joint_position_.position.push_back(current_joint_position_(idx));
-        stored_joint_position_.name.push_back(p.first);
+        auto it = std::find(joints_names_.begin(), joints_names_.end(), p.first);
+        if(it != joints_names_.end()) {
+            target_joint_position_.position.push_back(p.second.joint_value);
+            target_joint_position_.name.push_back(p.first);
+            auto idx = std::distance(joints_names_.begin(), it);
+            stored_joint_position_.position.push_back(current_joint_position_(idx));
+            stored_joint_position_.name.push_back(p.first);
+        }
     }
     joint_jog_timer_->reset();
 }

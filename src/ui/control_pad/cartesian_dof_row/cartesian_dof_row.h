@@ -15,15 +15,15 @@ public:
 signals:
 
 public:
-    MoveButton* BackwardVelocityButton;
+    MoveButton* backward_velocity_button_;
     // MoveButton* BackwardPositionButton;
     // MoveButton* ForwardPositionButton;
-    MoveButton* ForwardVelocityButton;
-    QLabel* Position;
-    size_t DOFIndex;
+    MoveButton* forward_velocity_button_;
+    QLabel* position_label_;
+    size_t dof_index_;
 
 private:
-    QHBoxLayout* m_Layout;
+    QHBoxLayout* layout_;
 };
 
 #endif // CARTESIAN_DOF_ROW_H

@@ -1,6 +1,7 @@
 #ifndef SETTING_PANEL_H
 #define SETTING_PANEL_H
 
+#include <QDoubleValidator>
 #include <QWidget>
 #include "robot_handle.h"
 
@@ -31,5 +32,19 @@ private:
     Ui::SettingPanel *ui;
     ControlCoordinateSystemType m_ControlCoordinateSystemType;
 };
+
+class EmptyOkDoubleValidator : public QDoubleValidator {
+public:
+    using QDoubleValidator::QDoubleValidator;
+
+    QValidator::State validate(QString &input, int &pos) const override {
+        if (input.isEmpty()) {
+            return QValidator::Acceptable;
+        }
+        return QDoubleValidator::validate(input, pos);
+    }
+};
+
+
 
 #endif // SETTING_PANEL_H

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>478</width>
+    <width>494</width>
     <height>188</height>
    </rect>
   </property>
@@ -18,6 +18,16 @@
     <layout class="QVBoxLayout" name="verticalLayout_2">
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout">
+       <item>
+        <widget class="QLabel" name="label_coordinate">
+         <property name="text">
+          <string>Coordinate:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="coordinate_selection_combobox"/>
+       </item>
        <item>
         <widget class="QLabel" name="label_step">
          <property name="text">
@@ -53,24 +63,6 @@
          </property>
         </widget>
        </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_3">
-       <item>
-        <widget class="QLabel" name="label_coordinate">
-         <property name="text">
-          <string>Coordinate:</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QComboBox" name="coordinate_selection_combobox"/>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
        <item>
         <widget class="QPushButton" name="add_to_point_pool_button">
          <property name="text">

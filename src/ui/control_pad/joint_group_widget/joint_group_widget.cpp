@@ -6,8 +6,8 @@ JointGroupWidget::JointGroupWidget(const std::string& jointGroupName, QWidget *p
     , ui(new Ui::JointGroupWidget)
 {
     ui->setupUi(this);
+    ui->joint_group_name->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     ui->joint_group_name->setText(QString::fromStdString(jointGroupName));
-
 }
 
 JointGroupWidget::~JointGroupWidget()
@@ -18,7 +18,6 @@ JointGroupWidget::~JointGroupWidget()
 void JointGroupWidget::addJoint(const std::string &jointName)
 {
     JointWidget* joint = new JointWidget(jointName, this);
-    joint->setMinimumWidth(200);
     ui->verticalLayout->addWidget(joint);
     connect(joint, &JointWidget::MoveButtonClicked,[this, jointName](MoveButtonType type, MoveButtonEvent event){emit MoveButtonClicked(type, event, jointName);});
 }

@@ -134,15 +134,15 @@ void ControlPad::regularUpdate()
 
     auto pose = KinematicsPlugin::instance().getCurrentCartesianPose();
     auto dofRows = this->findChildren<CartesianDOFRow*>();
-    dofRows[0]->Position->setText(QString::number(pose.pose.position.x));
-    dofRows[1]->Position->setText(QString::number(pose.pose.position.y));
-    dofRows[2]->Position->setText(QString::number(pose.pose.position.z));
+    dofRows[0]->position_label_->setText(QString::number(pose.pose.position.x, 'f', 3));
+    dofRows[1]->position_label_->setText(QString::number(pose.pose.position.y, 'f', 3));
+    dofRows[2]->position_label_->setText(QString::number(pose.pose.position.z, 'f', 3));
 
     tf2::Quaternion q(pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w);
     double rot_x, rot_y, rot_z;
     tf2::Matrix3x3(q).getRPY(rot_x, rot_y, rot_z);
 
-    dofRows[3]->Position->setText(QString::number(rot_x));
-    dofRows[4]->Position->setText(QString::number(rot_y));
-    dofRows[5]->Position->setText(QString::number(rot_z));
+    dofRows[3]->position_label_->setText(QString::number(rot_x, 'f', 3));
+    dofRows[4]->position_label_->setText(QString::number(rot_y, 'f', 3));
+    dofRows[5]->position_label_->setText(QString::number(rot_z, 'f', 3));
 }

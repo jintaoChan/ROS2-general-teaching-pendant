@@ -1,3 +1,4 @@
+#include <QTabWidget>
 #include "main_window.h"
 #include "ui_main_window.h"
 #include "control_pad.h"
@@ -10,19 +11,25 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    QGridLayout* layout = new QGridLayout(this);
-    SettingPanel* setting_pannel = new SettingPanel(this);
-    ControlPad* controlPad = new ControlPad(setting_pannel, this);
-    TaskWidget* taskWidget = new TaskWidget(setting_pannel, this);
-    
-    layout->addWidget(controlPad);
-    layout->addWidget(setting_pannel);
-    layout->addWidget(taskWidget);
+    QWidget *central = new QWidget(this);
+    setCentralWidget(central);
 
+    QGridLayout* main_layout = new QGridLayout(ui->centralwidget);
 
-    ui->centralwidget->setLayout(layout);
+    QTabWidget* tab_widget = new QTabWidget(ui->centralwidget);
 
-    connect(controlPad, &ControlPad::storeCurrentPointToPointPool, taskWidget, &TaskWidget::addPointFromControlPad);
+    SettingPanel* setting_pannel = new SettingPanel(ui->centralwidget);
+    ControlPad* control_pad = new ControlPad(setting_pannel, ui->centralwidget);
+    tab_widget->addTab(control_pad, "Move");
+    TaskWidget* task_widget = new TaskWidget(setting_pannel, ui->centralwidget);
+    tab_widget->addTab(task_widget, "Task");
+
+    main_layout->addWidget(tab_widget);
+    main_layout->addWidget(setting_pannel);
+
+    central->setLayout(main_layout);
+
+    connect(control_pad, &ControlPad::storeCurrentPointToPointPool, task_widget, &TaskWidget::addPointFromControlPad);
 }
 
 MainWindow::~MainWindow()

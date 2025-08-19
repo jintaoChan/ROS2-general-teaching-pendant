@@ -1,5 +1,6 @@
 #include <QMimeData>
 #include <QDrag>
+#include <QInputDialog>
 #include "point_pool.h"
 
 PointPool::PointPool(QWidget *parent)
@@ -43,36 +44,21 @@ MovePointInfo PointPool::getPoint(const std::string &pointName) const
     return m_PointPool.at(pointName);
 }
 
-QModelIndex PointPool::addPoint(const std::string &pointName, const MovePointInfo &moveGroupsState)
-{
-    QStandardItem* pointItem = newStdString(pointName, true);
-    for(const auto& group : moveGroupsState) {
-        QStandardItem* groupItem = newStdString(group.first);
-        switch (group.second.MoveType) {
-        case MoveTypeEnum::JOINT:
-            groupItem->appendColumn({});
-            for(size_t i = 0 ; i < group.second.JointNames.size(); ++i) {
-                groupItem->appendRow({
-                    newStdString(group.second.JointNames[i]),
-                    newNumber(group.second.Values[i]),
-                });
-            }
-            break;
-        default:
-            break;
-        }
-        // pointItem->appendRow({groupItem, newNumber((uchar)group.second.MoveType)});
-        pointItem->appendRow({groupItem, newStdString("JOINT")});
-    }
-    m_Model->appendRow({pointItem, newQString("")});
-    m_PointPool[pointName] = moveGroupsState;
-    return m_Model->indexFromItem(pointItem);
-}
-
 void PointPool::addPoint(const MovePointInfo &moveGroupsState)
 {
+    bool ok;
+    QString text = QInputDialog::getText(this, tr("Add a point"),
+                                         tr("Please input point's name"), QLineEdit::Normal,
+                                         "", &ok);
     auto index = addPoint("", moveGroupsState);
-    edit(index);
+    QWidget* editor = itemDelegate(index)->createEditor(this, QStyleOptionViewItem(), index);
+
+    QLineEdit* line = qobject_cast<QLineEdit*>(editor);
+    if (line) {
+        line->setText(text);
+        itemDelegate(index)->setModelData(editor, model(), index);
+    }
+    delete editor;
 }
 
 void PointPool::deletePoint(QModelIndex index)
@@ -100,6 +86,31 @@ void PointPool::deleteEvent(QModelIndex index)
     std::string pointToDelName = m_Model->data(pointToDelIndex).toString().toStdString();
     emit(CallTaskListToCheckIfContainThisPoint(pointToDelName));
     // deletePoint(index);
+}
+
+QModelIndex PointPool::addPoint(const std::string &point_name, const MovePointInfo &move_group_state)
+{
+    QStandardItem* point_item = newStdString(point_name, true);
+    for(const auto& group : move_group_state) {
+        QStandardItem* group_item = newStdString(group.first);
+        switch (group.second.MoveType) {
+        case MoveTypeEnum::JOINT:
+            group_item->appendColumn({});
+            for(size_t i = 0 ; i < group.second.JointNames.size(); ++i) {
+                group_item->appendRow({
+                    newStdString(group.second.JointNames[i]),
+                    newNumber(group.second.Values[i]),
+                });
+            }
+            break;
+        default:
+            break;
+        }
+        point_item->appendRow({group_item, newStdString("JOINT")});
+    }
+    m_Model->appendRow({point_item, newQString("")});
+    m_PointPool[point_name] = move_group_state;
+    return m_Model->indexFromItem(point_item);
 }
 
 void PointPool::startDrag(Qt::DropActions supportedActions)

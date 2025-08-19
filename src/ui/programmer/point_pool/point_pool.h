@@ -23,7 +23,6 @@ public:
 public:
     auto getPointsName() const -> QStringList;
     auto getPoint(const std::string& pointName) const -> MovePointInfo;
-    QModelIndex addPoint(const std::string& pointName, const MovePointInfo& moveGroupsState);
     void addPoint(const MovePointInfo& moveGroupsState);
     void deletePoint(QModelIndex index);
     void deletePoint(const std::string& pointName);
@@ -33,6 +32,7 @@ public:
 
 protected:
     void startDrag(Qt::DropActions supportedActions) override;
+    QModelIndex addPoint(const std::string& point_name, const MovePointInfo& move_group_state);
 
 signals:
     void CallTaskListToCheckIfContainThisPoint(const std::string& name);

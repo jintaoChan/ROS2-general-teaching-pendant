@@ -1,4 +1,3 @@
-#include <QDoubleValidator>
 #include <magic_enum/magic_enum.hpp>
 #include "setting_panel.h"
 #include "ui_setting_panel.h"
@@ -9,8 +8,14 @@ SettingPanel::SettingPanel(QWidget *parent)
     , ui(new Ui::SettingPanel)
 {
     ui->setupUi(this);
-    QDoubleValidator * validator = new QDoubleValidator(this);
+    EmptyOkDoubleValidator * validator = new EmptyOkDoubleValidator(this);
     ui->lineEdit_step->setValidator(validator);
+    ui->lineEdit_step->setFixedWidth(50);
+    QObject::connect(ui->lineEdit_step, &QLineEdit::editingFinished, [&](){
+        if(ui->lineEdit_step->text().isEmpty()) {
+            ui->lineEdit_step->setText(QString::number(0));
+        }
+    });
     constexpr auto coordEntries = magic_enum::enum_entries<ControlCoordinateSystemType>();
     for(const auto& coord : coordEntries) {
         ui->coordinate_selection_combobox->addItem(QString::fromStdString(std::string(coord.second)));
@@ -21,6 +26,7 @@ SettingPanel::SettingPanel(QWidget *parent)
     ui->coordinate_selection_combobox->setCurrentText(QString::fromStdString(std::string(magic_enum::enum_name(ControlCoordinateSystemType::Tool))));
     ui->horizontalSlider_velocity->setMaximum(100);
     ui->horizontalSlider_velocity->setMinimum(0);
+    ui->label_horizontalSlider_velocity->setFixedWidth(50);
     QObject::connect(ui->horizontalSlider_velocity, &QSlider::valueChanged, [&](int value){ ui->label_horizontalSlider_velocity->setText(QString::number(value) + QString(" %")); });
     ui->horizontalSlider_velocity->setValue(1);
     ui->horizontalSlider_velocity->setValue(0);

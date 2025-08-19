@@ -15,7 +15,7 @@ signals:
     void MoveButtonClicked(MoveButtonType type, MoveButtonEvent event, size_t idx);
 
 private:
-    QVBoxLayout* m_Layout;
+    QVBoxLayout* layout_;
     std::array<CartesianDOFRow*, 6> m_CartesianPad;
 };
 

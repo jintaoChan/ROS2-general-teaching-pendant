@@ -6,7 +6,7 @@ JointWidget::JointWidget(const std::string& jointName, QWidget *parent)
 {
     ui->setupUi(this);
     ui->joint_name->setText(QString::fromStdString(jointName));
-    ui->joint_position->setMinimumWidth(100);
+    ui->joint_position->setMargin(5);
     ui->backward_velocity->setButtonType(MoveButtonType::BACKWARD_VELOCITY);
     ui->backward_step->setButtonType(MoveButtonType::BACKWARD_STEP);
     ui->forward_step->setButtonType(MoveButtonType::FORWARD_STEP);

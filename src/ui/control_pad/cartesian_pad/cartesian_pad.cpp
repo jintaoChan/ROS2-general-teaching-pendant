@@ -3,18 +3,16 @@
 CartesianPad::CartesianPad(QWidget *parent)
     : QWidget{parent}
 {
-    m_Layout = new QVBoxLayout(this);
+    layout_ = new QVBoxLayout(this);
     for(size_t i = 0 ; i < m_CartesianPad.size(); ++i) {
         auto& row = m_CartesianPad[i];
         row = new CartesianDOFRow(i, this);
-        connect(row->BackwardVelocityButton,&MoveButton::pressed,[&]() { emit MoveButtonClicked(row->BackwardVelocityButton->getButtonType(), MoveButtonEvent::PRESSED, row->DOFIndex);});
-        connect(row->BackwardVelocityButton,&MoveButton::released,[&]() { emit MoveButtonClicked(row->BackwardVelocityButton->getButtonType(), MoveButtonEvent::RELEASED, row->DOFIndex);});
-        connect(row->ForwardVelocityButton,&MoveButton::pressed,[&]() { emit MoveButtonClicked(row->ForwardVelocityButton->getButtonType(), MoveButtonEvent::PRESSED, row->DOFIndex);});
-        connect(row->ForwardVelocityButton,&MoveButton::released,[&]() { emit MoveButtonClicked(row->ForwardVelocityButton->getButtonType(), MoveButtonEvent::RELEASED, row->DOFIndex);});
+        connect(row->backward_velocity_button_,&MoveButton::pressed,[&]() { emit MoveButtonClicked(row->backward_velocity_button_->getButtonType(), MoveButtonEvent::PRESSED, row->dof_index_);});
+        connect(row->backward_velocity_button_,&MoveButton::released,[&]() { emit MoveButtonClicked(row->backward_velocity_button_->getButtonType(), MoveButtonEvent::RELEASED, row->dof_index_);});
+        connect(row->forward_velocity_button_,&MoveButton::pressed,[&]() { emit MoveButtonClicked(row->forward_velocity_button_->getButtonType(), MoveButtonEvent::PRESSED, row->dof_index_);});
+        connect(row->forward_velocity_button_,&MoveButton::released,[&]() { emit MoveButtonClicked(row->forward_velocity_button_->getButtonType(), MoveButtonEvent::RELEASED, row->dof_index_);});
 
-        // connect(row->BackwardPositionButton,&MoveButton::clicked,[&]() { emit MoveButtonClicked(row->BackwardPositionButton->getButtonType(), MoveButtonEvent::CLICKED, row->DOFIndex);});
-        // connect(row->ForwardPositionButton,&MoveButton::clicked,[&]() { emit MoveButtonClicked(row->ForwardPositionButton->getButtonType(), MoveButtonEvent::CLICKED, row->DOFIndex);});
-        m_Layout->addWidget(row);
+        layout_->addWidget(row);
     }
-    setLayout(m_Layout);
+    setLayout(layout_);
 }

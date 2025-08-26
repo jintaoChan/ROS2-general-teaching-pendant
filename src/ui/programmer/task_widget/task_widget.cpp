@@ -93,8 +93,8 @@ void TaskWidget::on_execute_button_clicked()
         if (editingTask->item(i, 1) != nullptr && !editingTask->item(i, 1)->text().isEmpty()) {
             PointGroupTask pointGroup;
             for(int j = 0; j < editingTask->item(i)->rowCount(); ++j) {
-                auto pointName = editingTask->item(i)->child(j)->text().toStdString();
-                pointGroup.Points.push_back(ui->point_pool->getPoint(pointName));
+                auto point_name = editingTask->item(i)->child(j)->text().toStdString();
+                pointGroup.Points.push_back(ui->point_pool->getPoint(point_name));
             }
             pointGroup.Times = editingTask->item(i, 1)->text().toInt();
             points = pointGroup;

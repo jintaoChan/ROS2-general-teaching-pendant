@@ -7,9 +7,9 @@ std::atomic<bool> KeepMoving;
 void MoveExecutor::ExecuteTask(const MoveTasks &task, double velocity_scaling_factor)
 {
     auto executePoint = [velocity_scaling_factor](const MovePointInfo& moveGroupInfo) {
-        auto& robotDes = RobotHandle::instance();
+        auto& robot_des = RobotHandle::instance();
         for(const auto& groupInfo : moveGroupInfo) {
-            auto& moveGroupIF = robotDes.getMoveGroupInterfaces(groupInfo.first);
+            auto& moveGroupIF = robot_des.getMoveGroupInterfaces(groupInfo.first);
             moveGroupIF->setJointValueTarget(groupInfo.second.Values);
             moveGroupIF->setMaxVelocityScalingFactor(velocity_scaling_factor);
             moveGroupIF->setMaxAccelerationScalingFactor(1);
@@ -23,7 +23,7 @@ void MoveExecutor::ExecuteTask(const MoveTasks &task, double velocity_scaling_fa
     ControllerSwitcher::instance().switchToTaskExecutor();
     KeepMoving = true;
     for (const auto& p : task) {
-        // const auto& pointName = p.PointName;
+        // const auto& point_name = p.PointName;
         const auto& pointInfos = p.PointInfos;
         if (pointInfos.index() == 0) {
             auto moveGourps = std::get<0>(pointInfos);
@@ -52,11 +52,11 @@ void MoveExecutor::ExecuteTask(const MoveTasks &task, double velocity_scaling_fa
 
 void MoveExecutor::StopMoving()
 {
-    auto& robotDes = RobotHandle::instance();
+    auto& robot_des = RobotHandle::instance();
     KeepMoving = false;
-    auto jointGroups = robotDes.getJointGroupsNames();
+    auto jointGroups = robot_des.getJointGroupsNames();
     for(const auto& group : jointGroups) {
-        auto& moveGroupIF = robotDes.getMoveGroupInterfaces(group);
+        auto& moveGroupIF = robot_des.getMoveGroupInterfaces(group);
         moveGroupIF->stop();
     }
 }

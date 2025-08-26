@@ -16,16 +16,16 @@ ControlPad::ControlPad(SettingPanel* setting_panel, QWidget *parent)
     , setting_panel_(setting_panel)
 {
     ui_->setupUi(this);
-    auto& robotDes = RobotHandle::instance();
+    auto& robot_des = RobotHandle::instance();
     QHBoxLayout* hlayout = new QHBoxLayout(this);
     auto cartesianPad = new CartesianPad(this);
     connect(cartesianPad, &CartesianPad::MoveButtonClicked, this, [this](MoveButtonType type, MoveButtonEvent event, size_t idx){emit MoveCommander(type, event, idx);});
     hlayout->addWidget(cartesianPad);
     QVBoxLayout* vlayout = new QVBoxLayout(this);
-    auto joint_groups_names = robotDes.getJointGroupsNames();
+    auto joint_groups_names = robot_des.getJointGroupsNames();
     for(const auto& jg_name: joint_groups_names) {
         JointGroupWidget* jg = new JointGroupWidget(jg_name, this);
-        auto joint = robotDes.getJointGroupJointNames(jg_name);
+        auto joint = robot_des.getJointGroupJointNames(jg_name);
         for(const auto& jt : joint) {
             jg->addJoint(jt);
             connect(jg, &JointGroupWidget::MoveButtonClicked, [this](MoveButtonType type, MoveButtonEvent event, const std::string& joint_name){emit MoveCommander(type, event, joint_name);});
@@ -109,6 +109,8 @@ void ControlPad::MoveCommander(MoveButtonType type, MoveButtonEvent event, size_
         }
         else if(event == MoveButtonEvent::RELEASED){
         }
+        break;
+    default:
         break;
     }
     }

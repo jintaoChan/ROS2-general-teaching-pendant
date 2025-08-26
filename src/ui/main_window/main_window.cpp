@@ -4,6 +4,7 @@
 #include "control_pad.h"
 #include "task_widget.h"
 #include "setting_panel.h"
+#include "setting_page.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -23,6 +24,8 @@ MainWindow::MainWindow(QWidget *parent)
     tab_widget->addTab(control_pad, "Move");
     TaskWidget* task_widget = new TaskWidget(setting_pannel, ui->centralwidget);
     tab_widget->addTab(task_widget, "Task");
+    SettingPage* setting_page = new SettingPage(ui->centralwidget);
+    tab_widget->addTab(setting_page, "Setting");
 
     main_layout->addWidget(tab_widget);
     main_layout->addWidget(setting_pannel);

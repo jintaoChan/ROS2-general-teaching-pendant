@@ -4,6 +4,8 @@
 #include <moveit/robot_model/robot_model.hpp>
 #include <moveit/robot_state/robot_state.hpp>
 #include <moveit/move_group_interface/move_group_interface.hpp>
+#include <kdl_parser/kdl_parser.hpp>
+#include <kdl/tree.hpp>
 
 #include "singleton.hpp"
 #include "functional.hpp"
@@ -11,7 +13,8 @@
 
 enum class ControlCoordinateSystemType {
     Base = 0,
-    Tool
+    Tool,
+    EndEffector
 };
 
 enum class MoveTypeEnum : char {
@@ -54,6 +57,7 @@ struct Joints {
 using JointsPosition = std::unordered_map<std::string, Joints>;
 using JointsVelocity = std::unordered_map<std::string, Joints>;
 using JointsAcceleration = std::unordered_map<std::string, Joints>;
+using ToolInfo = std::unordered_map<std::string, KDL::Frame>;
 
 class RobotHandle : public Singleton<RobotHandle>{
     friend class Singleton<RobotHandle>;
@@ -74,15 +78,17 @@ public:
                 robot_arm_name_ = group_name;
             }
         }
-        robot_arm_base_link_name_ = move_group_interfaces_[robot_arm_name_]->getLinkNames().front();
-        robot_arm_end_link_name_ = move_group_interfaces_[robot_arm_name_]->getLinkNames().back();
+        const auto& available_names = move_group_interfaces_[robot_arm_name_]->getLinkNames();
+        getFrameName(robot_arm_base_link_name_, "coordinate_system.base_frame", available_names, available_names.front());
+        getFrameName(robot_arm_end_link_name_, "coordinate_system.end_effector_frame", available_names, available_names.back());
+        getToolFrameInfo(robot_arm_tool_info_, "coordinate_system.tool_frame");
+
+        
         robot_frame_id_ = move_group_interfaces_[robot_arm_name_]->getPlanningFrame();
         RCLCPP_INFO(node_->get_logger(), "IK plugin manipulating: %s", robot_arm_name_.c_str());
-        RCLCPP_INFO(node_->get_logger(), "Robot base link: %s", robot_arm_base_link_name_.c_str());
-        RCLCPP_INFO(node_->get_logger(), "Robot end link: %s", robot_arm_end_link_name_.c_str());
         RCLCPP_INFO(node_->get_logger(), "Robot frame: %s", robot_frame_id_.c_str());
         
-        auto update_rate = AcquireParam<int32_t>("/controller_manager", "update_rate");
+        auto update_rate = AcquireParam<int32_t>("/controller_manager", "update_rate").value();
         controller_update_period_ = 1e3 / update_rate;
 
         const auto& joint_models = robot_model_ptr_->getJointModels();
@@ -95,16 +101,16 @@ public:
         for(const auto& jg_name: joint_groups_names) {
             auto joint = getJointGroupJointNames(jg_name);
             for(const auto& jt : joint) {
-                joint_velocity_limits_[jt].joint_value = AcquireParam<double>("/move_group", "robot_description_planning.joint_limits." + jt + ".max_velocity");
-                joint_acceleration_limits_[jt].joint_value = AcquireParam<double>("/move_group", "robot_description_planning.joint_limits." + jt + ".max_acceleration");
-                joint_deceleration_limits_[jt].joint_value = AcquireParam<double>("/move_group", "robot_description_planning.joint_limits." + jt + ".max_deceleration");
+                joint_velocity_limits_[jt].joint_value = AcquireParam<double>("/move_group", "robot_description_planning.joint_limits." + jt + ".max_velocity").value();
+                joint_acceleration_limits_[jt].joint_value = AcquireParam<double>("/move_group", "robot_description_planning.joint_limits." + jt + ".max_acceleration").value();
+                joint_deceleration_limits_[jt].joint_value = AcquireParam<double>("/move_group", "robot_description_planning.joint_limits." + jt + ".max_deceleration").value();
             }
         }
 
-        cartisian_limits_max_trans_vel_ = AcquireParam<double>("/move_group", "robot_description_planning.cartesian_limits.max_trans_vel");
-        cartisian_limits_max_trans_acc_ = AcquireParam<double>("/move_group",  "robot_description_planning.cartesian_limits.max_trans_acc");
-        cartisian_limits_max_trans_dec_ = AcquireParam<double>("/move_group",  "robot_description_planning.cartesian_limits.max_trans_dec");
-        cartisian_limits_max_rot_vel_ = AcquireParam<double>("/move_group",  "robot_description_planning.cartesian_limits.max_rot_vel");
+        cartisian_limits_max_trans_vel_ = AcquireParam<double>("/move_group", "robot_description_planning.cartesian_limits.max_trans_vel").value();
+        cartisian_limits_max_trans_acc_ = AcquireParam<double>("/move_group",  "robot_description_planning.cartesian_limits.max_trans_acc").value();
+        cartisian_limits_max_trans_dec_ = AcquireParam<double>("/move_group",  "robot_description_planning.cartesian_limits.max_trans_dec").value();
+        cartisian_limits_max_rot_vel_ = AcquireParam<double>("/move_group",  "robot_description_planning.cartesian_limits.max_rot_vel").value();
 
         joint_state_subscription_ = node_->create_subscription<sensor_msgs::msg::JointState>("/joint_states", 10, std::bind(&RobotHandle::recvCallback, this, std::placeholders::_1));
         move_command_sender_ = node_->create_publisher<sensor_msgs::msg::JointState>("control_pad_controller/control_pad_move_cmd", 10);
@@ -208,6 +214,10 @@ public:
         return robot_arm_end_link_name_;
     }
 
+    const ToolInfo& getRobotArmToolInfo() const {
+        return robot_arm_tool_info_;
+    }
+
     void moveJointByVelcoity(const JointsVelocity& joint_velocity) {
         ControllerSwitcher::instance().switchToControlPad();
         sensor_msgs::msg::JointState msg;
@@ -227,12 +237,86 @@ public:
         }
         move_command_sender_->publish(msg);
     }
+
+    void deleteToolFrame(const std::string& tool_name) {
+        robot_arm_tool_info_.erase(tool_name);
+    }
+
+    void addToolFrame(const std::string& tool_name, const KDL::Frame& frame) {
+        robot_arm_tool_info_[tool_name] = frame;
+    }
+
+    void setCurrentToolFrame(const std::string& tool_name) {
+        current_tool_frame_ = tool_name;
+    }
+
+    const bool& isToolFrameSet() const {
+        return tool_frame_set_;
+    }
+
+    const std::string& getCurrentToolFrame() const {
+        return current_tool_frame_;
+    }
     
 private:
     void recvCallback(const sensor_msgs::msg::JointState &msg)
     {
         for(size_t i = 0; i < msg.name.size(); ++i) {
             current_joint_position_[msg.name[i]].joint_value = msg.position[i];
+        }
+    }
+
+    //warpper function
+    KDL::Frame GetFixedTransform(const KDL::Chain& chain)
+    {
+        KDL::Frame T = KDL::Frame::Identity();
+        for (const auto& seg: chain.segments) {
+            if (seg.getJoint().getType() == KDL::Joint::None) {
+                T = T * seg.pose(0.0);
+            }
+            else {
+                throw(std::runtime_error("Tool should be fixed on end link!"));
+            }
+        }
+        return T;
+    }
+    void getToolFrameInfo(ToolInfo& res, const std::string& param_name) {
+        urdf::Model urdf_model;
+        KDL::Tree kdl_tree;
+        KDL::Chain chain;
+        auto param = AcquireParam<std::vector<std::string>>("/controller_manager", param_name);
+        auto urdf_param = AcquireParam<std::string>("/robot_state_publisher", "robot_description").value();
+        urdf_model.initString(urdf_param);
+        kdl_parser::treeFromUrdfModel(urdf_model, kdl_tree);
+        auto all_links = kdl_tree.getSegments();
+        if(param.has_value()) {
+            for(auto v: param.value()) {
+                if(!all_links.count(v)) {
+                    RCLCPP_WARN(node_->get_logger(), "Tool frame %s do not exist in urdf! Ignore this tool!", v.c_str());
+                    continue;
+                }
+                kdl_tree.getChain(robot_arm_end_link_name_, v, chain);
+                res[v] = GetFixedTransform(chain);
+            }
+            tool_frame_set_ = true;
+            current_tool_frame_ = res.begin()->first;
+        }
+        else {
+            res.clear();
+        }
+    }
+
+    void getFrameName(std::string& res, const std::string& param_name, const std::vector<std::string>& available_list, const std::string& or_value) {
+        auto param = AcquireParam<std::string>("/controller_manager", param_name);
+        if(param.has_value()) {
+            res = param.value();
+            if(std::find(available_list.begin(), available_list.end(), res) == available_list.end()) {
+                RCLCPP_WARN(node_->get_logger(), "Frame %s do not exist in urdf!", res.c_str());
+                res = available_list.front();
+            }
+        }
+        else {
+            res = or_value;
         }
     }
 
@@ -258,6 +342,9 @@ private:
     std::string robot_frame_id_;
     std::string robot_arm_base_link_name_;
     std::string robot_arm_end_link_name_;
+    ToolInfo robot_arm_tool_info_;
+    bool tool_frame_set_;
+    std::string current_tool_frame_;
 
     double cartisian_limits_max_trans_vel_;
     double cartisian_limits_max_trans_acc_;

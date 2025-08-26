@@ -28,14 +28,14 @@ public:
 
 signals:
     void TaskDeleted(QStandardItemModel*);
-    void ConfirmPointPoolToDeletedPoint(const std::string& pointName);
+    void ConfirmPointPoolToDeletedPoint(const std::string& point_name);
 
 public slots:
-    void CheckTaskListIfContainThisPoint(const std::string& pointName);
+    void CheckTaskListIfContainThisPoint(const std::string& point_name);
 
 private:
     Ui::TaskList *ui;
-    QStandardItemModel* m_Model;
+    QStandardItemModel* model_;
     ItemFilterDelegate* m_ItemFilterDelegate;
     std::unordered_map<std::string, QStandardItemModel*> m_TaskLists;
 };

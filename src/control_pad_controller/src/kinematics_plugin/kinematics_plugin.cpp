@@ -8,35 +8,34 @@ using namespace std::chrono;
 KinematicsPlugin::KinematicsPlugin(const rclcpp::Node::SharedPtr& node)
     :node_(node)
 {
-    auto param = AcquireParam<std::string>("/robot_state_publisher", "robot_description");
-    urdf_model_.initString(param);
+    auto urdf_param = AcquireParam<std::string>("/robot_state_publisher", "robot_description").value();
+    urdf_model_.initString(urdf_param);
     kdl_parser::treeFromUrdfModel(urdf_model_, kdl_tree_);
     root_frame_id_ = RobotHandle::instance().getFrameID();
-    current_frame_id_ = root_frame_id_;
-    kdl_tree_.getChain(root_frame_id_, RobotHandle::instance().getRobotArmEndLinkName(), kdl_chain_);
-    fk_solver_ = std::make_unique<KDL::ChainFkSolverPos_recursive>(kdl_chain_);
-    ik_velocity_solver_ = std::make_unique<KDL::ChainIkSolverVel_pinv>(kdl_chain_);
-    joints_num_ = kdl_chain_.getNrOfJoints();
+    kdl_tree_.getChain(root_frame_id_, RobotHandle::instance().getRobotArmEndLinkName(), default_kdl_chain_);
+    tool_segment_ = KDL::Segment("tool_link", KDL::Joint("tool_joint"));
+    joints_num_ = default_kdl_chain_.getNrOfJoints();
     current_joint_position_.resize(joints_num_);
 
     joint_velocity_limit_ = RobotHandle::instance().getJointsVelocityLimits();
-    KDL::JntArray joints_limit_min(joints_num_), joints_limit_max(joints_num_);
-    for (size_t i = 0, idx = 0; i < kdl_chain_.segments.size(); ++i) {
-        if(kdl_chain_.segments[i].getJoint().getType() == KDL::Joint::None) {continue;}
-        const auto& joint_name = kdl_chain_.segments[i].getJoint().getName();
+    joints_limit_min_.resize(joints_num_);
+    joints_limit_max_.resize(joints_num_);
+    for (size_t i = 0, idx = 0; i < default_kdl_chain_.segments.size(); ++i) {
+        if(default_kdl_chain_.segments[i].getJoint().getType() == KDL::Joint::None) {continue;}
+        const auto& joint_name = default_kdl_chain_.segments[i].getJoint().getName();
         joints_names_.push_back(joint_name);
         auto joint = urdf_model_.getJoint(joint_name);
         if (joint && joint->limits) {
-            joints_limit_min(idx) = joint->limits->lower;
-            joints_limit_max(idx) = joint->limits->upper;
+            joints_limit_min_(idx) = joint->limits->lower;
+            joints_limit_max_(idx) = joint->limits->upper;
         }
         else {
-            joints_limit_min(idx) = -std::numeric_limits<double>::max();
-            joints_limit_max(idx) = std::numeric_limits<double>::max();
+            joints_limit_min_(idx) = -std::numeric_limits<double>::max();
+            joints_limit_max_(idx) = std::numeric_limits<double>::max();
         }
         ++idx;
     }
-    ik_solver_ = std::make_unique<KDL::ChainIkSolverPos_NR_JL>(kdl_chain_, joints_limit_min, joints_limit_max, *fk_solver_, *ik_velocity_solver_, 200, 1e-5);
+    resetSolver();
     current_pose_.header.frame_id = root_frame_id_;
 
     cartesian_jog_timer_ = node_->create_wall_timer(milliseconds(RobotHandle::instance().getControllerUpdatePeriod()), std::bind(&KinematicsPlugin::cartesianJogCallback, this));
@@ -99,12 +98,21 @@ void KinematicsPlugin::twistRobot(const geometry_msgs::msg::Twist &twist_msg) {
     else {
         twist_msg_ = twist_msg;
         stored_pose_ = current_pose_;
-        if(current_frame_id_ == root_frame_id_) {
-            selected_coord_system_ = KDL::Rotation::Identity();
+        switch(coord_sys_type_) {
+            case ControlCoordinateSystemType::Tool:{
+                selected_coord_system_ = KDL::Rotation::Quaternion(stored_pose_.pose.orientation.x, stored_pose_.pose.orientation.y, stored_pose_.pose.orientation.z, stored_pose_.pose.orientation.w);
+                break;
+            }
+            case ControlCoordinateSystemType::Base: {
+                selected_coord_system_ = KDL::Rotation::Identity();
+                break;
+            }
+            case ControlCoordinateSystemType::EndEffector: {
+                selected_coord_system_ = KDL::Rotation::Quaternion(stored_pose_.pose.orientation.x, stored_pose_.pose.orientation.y, stored_pose_.pose.orientation.z, stored_pose_.pose.orientation.w);
+                break;
+            }
         }
-        else {
-            selected_coord_system_ = KDL::Rotation::Quaternion(stored_pose_.pose.orientation.x, stored_pose_.pose.orientation.y, stored_pose_.pose.orientation.z, stored_pose_.pose.orientation.w);
-        }
+        resetSolver();
         cartesian_jog_timer_->reset();
     }
 }
@@ -159,14 +167,21 @@ geometry_msgs::msg::PoseStamped KinematicsPlugin::getCurrentCartesianPose()
 
 void KinematicsPlugin::selectCoordinateSystem(const ControlCoordinateSystemType& coord_sys)
 {
-    switch(coord_sys) {
-        case ControlCoordinateSystemType::Tool:
-            current_frame_id_ = RobotHandle::instance().getRobotArmEndLinkName();
-            break;
-        case ControlCoordinateSystemType::Base:
-            current_frame_id_ = root_frame_id_;
-            break;
+    coord_sys_type_ = coord_sys;
+    switch(coord_sys_type_) {
+    case ControlCoordinateSystemType::Tool:{
+        auto current_tool_frame = RobotHandle::instance().getCurrentToolFrame();
+        tool_segment_.setFrameToTip(RobotHandle::instance().getRobotArmToolInfo().at(current_tool_frame));
+        break;
     }
+    default:
+        tool_segment_.setFrameToTip(KDL::Frame::Identity());
+    }
+    resetSolver();
+}
+
+void KinematicsPlugin::refreshCoordinateSystem() {
+    selectCoordinateSystem(coord_sys_type_);
 }
 
 void KinematicsPlugin::cartesianJogCallback()
@@ -361,11 +376,60 @@ void KinematicsPlugin::remoteCartesianMoveCallback(const geometry_msgs::msg::Pos
     }
 }
 
+KDL::Vector KinematicsPlugin::tcpCalibration(const std::vector<KDL::Frame> &points)
+{
+    const auto& size = points.size();
+    if(size < 3) {
+        RCLCPP_ERROR(node_->get_logger(), "TCP calibration need 3 pose at least!");
+        return {};
+    }
+    int row_size = 3 * (int)std::floor(3 * size * (size - 1) / 2);
+    Eigen::MatrixXd A(row_size, 3), b(row_size, 1);
+    size_t count = 0;
+    for(size_t i = 0; i < size - 1; ++i) {
+        const auto& r1 = points[i].M;
+        const auto& t1 = points[i].p;
+        for(size_t j = i + 1; j < size; ++j) {
+            const auto& r2 = points[j].M;
+            const auto& t2 = points[j].p;
+            A.row(3 * count)     << r1.data[0] - r2.data[0], r1.data[1] - r2.data[1], r1.data[2] - r2.data[2];
+            A.row(3 * count + 1) << r1.data[3] - r2.data[3], r1.data[4] - r2.data[4], r1.data[5] - r2.data[5];
+            A.row(3 * count + 2) << r1.data[6] - r2.data[6], r1.data[7] - r2.data[7], r1.data[8] - r2.data[8];
+            b.row(3 * count)     << t1.data[0] - t2.data[0];
+            b.row(3 * count + 1) << t1.data[1] - t2.data[1];
+            b.row(3 * count + 2) << t1.data[2] - t2.data[2];
+            ++count;
+        }
+    }
+    auto x = (A.transpose() * A).inverse() * A.transpose() * b;
+    KDL::Vector res{x(0), x(1), x(2)};
+}
+
+void KinematicsPlugin::resetSolver()
+{
+    kdl_chain_ = default_kdl_chain_;
+    kdl_chain_.addSegment(tool_segment_);
+    fk_solver_ = std::make_unique<KDL::ChainFkSolverPos_recursive>(kdl_chain_);
+    ik_velocity_solver_ = std::make_unique<KDL::ChainIkSolverVel_pinv>(kdl_chain_);
+    ik_solver_ = std::make_unique<KDL::ChainIkSolverPos_NR_JL>(kdl_chain_, joints_limit_min_, joints_limit_max_, *fk_solver_, *ik_velocity_solver_, 200, 1e-5);
+}
+
 KDL::Frame KinematicsPlugin::pose2KDLFrame(geometry_msgs::msg::Pose pose) {
     KDL::Frame res;
     res.p.x(pose.position.x);
     res.p.y(pose.position.y);
     res.p.z(pose.position.z);
     res.M = KDL::Rotation::Quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
+    return res;
+}
+
+geometry_msgs::msg::Pose KinematicsPlugin::kdlFrame2Pose(KDL::Frame frame)
+{
+    geometry_msgs::msg::Pose res;
+    res.position.x = frame.p.x();
+    res.position.y = frame.p.y();
+    res.position.z = frame.p.z();
+    frame.M.GetQuaternion(res.orientation.x, res.orientation.y, res.orientation.z, res.orientation.w);
+    
     return res;
 }

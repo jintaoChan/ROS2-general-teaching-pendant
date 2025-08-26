@@ -29,8 +29,9 @@ private slots:
     void on_coordinate_selection_combobox_currentIndexChanged(int index);
 
 private:
-    Ui::SettingPanel *ui;
-    ControlCoordinateSystemType m_ControlCoordinateSystemType;
+    Ui::SettingPanel *ui_;
+    ControlCoordinateSystemType control_coordinate_system_type_;
+    int previous_coordinate_index_;
 };
 
 class EmptyOkDoubleValidator : public QDoubleValidator {

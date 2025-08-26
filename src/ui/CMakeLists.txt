@@ -40,6 +40,9 @@ file(GLOB_RECURSE PRO_SOURCES_DIR RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} FOLLOW_SY
 #搜索头文件的位置
 include_directories(
   setting_panel/
+  setting_page/
+  setting_page/tcp/
+  setting_page/tcp/tool_frame_widget/
   control_pad/move_button/
   control_pad/joint_widget/
   control_pad/joint_group_widget/
@@ -68,7 +71,7 @@ add_executable(${PROJECT_NAME}
   ${QT_RESOURCES_CPP}
   ${PRO_INCLUDE_DIR}
   ${QT_MOC_HPP}
-  ${PRO_FORM_DIR}
+  ${QT_UI_HPP}
 )
 # Note that ament_target_dependencies() in algo cannot export Boost::thread to downstream. As a result, qt_example_node, as a downstream of libalgo.so, needs to explicitly ament_target_dependencies() for Boost again so that qt_example_node is able to link to Boost::thread.
 ament_target_dependencies(${PROJECT_NAME} ${THIS_PACKAGE_INCLUDE_DEPENDS} Boost)

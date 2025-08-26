@@ -29,6 +29,7 @@ public:
 
     geometry_msgs::msg::PoseStamped getCurrentCartesianPose();
     void selectCoordinateSystem(const ControlCoordinateSystemType& coord_sys);
+    void refreshCoordinateSystem();// tool interchange
 
 private:
     void cartesianJogCallback();
@@ -41,17 +42,26 @@ private:
     void remoteCartesianMoveCallback(const geometry_msgs::msg::PoseStamped& msg);
 
 private:
+    void resetSolver();
+    KDL::Vector tcpCalibration(const std::vector<KDL::Frame>& points);
+
+private:
     KDL::Frame pose2KDLFrame(geometry_msgs::msg::Pose pose);
+    geometry_msgs::msg::Pose kdlFrame2Pose(KDL::Frame frame);
 
 private:
     rclcpp::Node::SharedPtr node_;
     urdf::Model urdf_model_;
     std::string root_frame_id_;
-    std::string current_frame_id_;
+    ControlCoordinateSystemType coord_sys_type_{ControlCoordinateSystemType::Base};
     KDL::Tree kdl_tree_;
+    KDL::Chain default_kdl_chain_;
     KDL::Chain kdl_chain_;
+    KDL::Segment tool_segment_;
     size_t joints_num_;
     std::vector<std::string> joints_names_;
+    KDL::JntArray joints_limit_min_;
+    KDL::JntArray joints_limit_max_;
     std::unique_ptr<KDL::ChainFkSolverPos_recursive> fk_solver_;
     std::unique_ptr<KDL::ChainIkSolverVel_pinv> ik_velocity_solver_;
     std::unique_ptr<KDL::ChainIkSolverPos_NR_JL> ik_solver_;

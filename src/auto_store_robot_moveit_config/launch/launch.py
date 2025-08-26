@@ -91,6 +91,7 @@ def generate_launch_description():
             executable="ros2_control_node",
             parameters=[
                 str(auto_store_robot_moveit_config.package_path / "config/ros2_controllers.yaml"),
+                str(auto_store_robot_moveit_config.package_path / "config/grtp.yaml"),
             ],
             remappings=[
                 ("/controller_manager/robot_description", "/robot_description"),

@@ -1,9 +1,10 @@
 #pragma once
 
 #include <rclcpp/rclcpp.hpp>
+#include <optional>
 
 template<typename T>
-T AcquireParam(const std::string& node_name, const std::string& param_name) {
+std::optional<T> AcquireParam(const std::string& node_name, const std::string& param_name) {
     auto node = rclcpp::Node::make_shared("param_acquire");
     T param;
     auto param_client = std::make_shared<rclcpp::SyncParametersClient>(node, node_name);
@@ -14,8 +15,9 @@ T AcquireParam(const std::string& node_name, const std::string& param_name) {
 
     if (param_client->has_parameter(param_name)) {
         param = param_client->get_parameter(param_name, T{});
+        return param;
     } else {
         RCLCPP_WARN(node->get_logger(), "Failed to find param: %s", param_name.c_str());
+        return {};
     }
-    return param;
 }

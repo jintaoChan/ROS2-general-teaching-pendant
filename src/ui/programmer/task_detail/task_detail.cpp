@@ -17,13 +17,13 @@ TaskDetail::TaskDetail(QWidget *parent)
     // setDragDropMode(QAbstractItemView::DragDrop);
 }
 
-void TaskDetail::addPoint(const std::string& pointName)
+void TaskDetail::addPoint(const std::string& point_name)
 {
     if(model() == nullptr) {
         QMessageBox::warning(this, "Task empty", "Select a task please!");
         return;
     }
-    qobject_cast<QStandardItemModel *>(model())->appendRow(newStdString(pointName, false, true));
+    qobject_cast<QStandardItemModel *>(model())->appendRow(newStdString(point_name, false, true));
 }
 
 void TaskDetail::addGroup(const std::string &groupName, const int &recycleTimes)
@@ -38,8 +38,8 @@ void TaskDetail::addGroup(const std::string &groupName, const int &recycleTimes)
 void TaskDetail::deleteEvent(QModelIndex index)
 {
     auto model = qobject_cast<QStandardItemModel *>(this->model());
-    QModelIndex pointToDelIndex = model->index(index.row(), 0);
-    std::string pointToDelName = model->data(pointToDelIndex).toString().toStdString();
+    QModelIndex point_to_del_index = model->index(index.row(), 0);
+    std::string point_to_del_name = model->data(point_to_del_index).toString().toStdString();
     model->removeRow(index.row());
 }
 

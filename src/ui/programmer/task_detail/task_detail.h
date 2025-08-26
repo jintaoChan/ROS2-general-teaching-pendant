@@ -24,7 +24,7 @@ public:
     ~TaskDetail(){};
 
 public:
-    void addPoint(const std::string& pointName);
+    void addPoint(const std::string& point_name);
     void addGroup(const std::string& groupName, const int& recycleTimes);
 
     virtual void deleteEvent(QModelIndex index) override;

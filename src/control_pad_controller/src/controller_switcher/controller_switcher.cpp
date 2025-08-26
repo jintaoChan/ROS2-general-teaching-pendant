@@ -8,7 +8,7 @@ ControllerSwitcher::ControllerSwitcher(const rclcpp::Node::SharedPtr& node)
     controller_switcher_ = node_->create_client<controller_manager_msgs::srv::SwitchController>("/controller_manager/switch_controller", 10);
     controller_list_requester_ = node_->create_client<controller_manager_msgs::srv::ListControllers>("/controller_manager/list_controllers", 10);
 
-    auto controller_names = AcquireParam<std::vector<std::string>>("/move_group", "moveit_simple_controller_manager.controller_names");
+    auto controller_names = AcquireParam<std::vector<std::string>>("/move_group", "moveit_simple_controller_manager.controller_names").value();
     RCLCPP_INFO(node_->get_logger(), "Controllers' name acquired form moveit");
     for (const auto & name : controller_names) {
         RCLCPP_INFO(node_->get_logger(), "Moveit claimed controller: %s", name.c_str());

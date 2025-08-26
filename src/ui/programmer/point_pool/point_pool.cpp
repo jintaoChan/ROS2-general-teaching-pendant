@@ -6,24 +6,24 @@
 PointPool::PointPool(QWidget *parent)
     : TreeViewWithKeyEvent(parent)
 {
-    m_Model = new QStandardItemModel;
-    m_Model->setHorizontalHeaderLabels(QStringList()
+    model_ = new QStandardItemModel;
+    model_->setHorizontalHeaderLabels(QStringList()
                                         << "Name"
                                         << "Target Type/Values"
                                      );
-    m_PointPoolItemFilterDelegate = new ItemFilterDelegate(this);
-    this->setItemDelegate(m_PointPoolItemFilterDelegate);
-    connect(m_PointPoolItemFilterDelegate,
+    point_poolItem_filter_delegate_ = new ItemFilterDelegate(this);
+    this->setItemDelegate(point_poolItem_filter_delegate_);
+    connect(point_poolItem_filter_delegate_,
             &ItemFilterDelegate::itemAdded,
-            m_PointPoolItemFilterDelegate,
-            [this](const std::string& newName){emit m_PointPoolItemFilterDelegate->itemModified("", newName);});
-    connect(m_PointPoolItemFilterDelegate, &ItemFilterDelegate::itemModified, this, &PointPool::modifyPointName);
-    auto& robotDes = RobotHandle::instance();
-    MovePointInfos presetPoints = robotDes.getPresetGroupState();
-    for(const auto& point : presetPoints){
+            point_poolItem_filter_delegate_,
+            [this](const std::string& new_name){emit point_poolItem_filter_delegate_->itemModified("", new_name);});
+    connect(point_poolItem_filter_delegate_, &ItemFilterDelegate::itemModified, this, &PointPool::modifyPointName);
+    auto& robot_des = RobotHandle::instance();
+    MovePointInfos preset_points = robot_des.getPresetGroupState();
+    for(const auto& point : preset_points){
         addPoint(point.first, point.second);
     }
-    setModel(m_Model);
+    setModel(model_);
     setDragEnabled(true);
     // setDragDropMode(QAbstractItemView::InternalMove);//drag disable
     // expandAll();
@@ -33,24 +33,24 @@ PointPool::PointPool(QWidget *parent)
 QStringList PointPool::getPointsName() const
 {
     QStringList res;
-    for(int i = 0 ;i < m_Model->rowCount(); ++i) {
-        res << m_Model->item(i)->text();
+    for(int i = 0 ;i < model_->rowCount(); ++i) {
+        res << model_->item(i)->text();
     }
     return res;
 }
 
-MovePointInfo PointPool::getPoint(const std::string &pointName) const
+MovePointInfo PointPool::getPoint(const std::string &point_name) const
 {
-    return m_PointPool.at(pointName);
+    return point_pool_.at(point_name);
 }
 
-void PointPool::addPoint(const MovePointInfo &moveGroupsState)
+void PointPool::addPoint(const MovePointInfo &move_groups_state)
 {
     bool ok;
     QString text = QInputDialog::getText(this, tr("Add a point"),
                                          tr("Please input point's name"), QLineEdit::Normal,
                                          "", &ok);
-    auto index = addPoint("", moveGroupsState);
+    auto index = addPoint("", move_groups_state);
     QWidget* editor = itemDelegate(index)->createEditor(this, QStyleOptionViewItem(), index);
 
     QLineEdit* line = qobject_cast<QLineEdit*>(editor);
@@ -63,18 +63,18 @@ void PointPool::addPoint(const MovePointInfo &moveGroupsState)
 
 void PointPool::deletePoint(QModelIndex index)
 {
-    QModelIndex pointToDelIndex = m_Model->index(index.row(), 0);
-    std::string pointToDelName = m_Model->data(pointToDelIndex).toString().toStdString();
-    m_PointPool.erase(pointToDelName);
-    m_Model->removeRow(index.row());
+    QModelIndex point_to_del_index = model_->index(index.row(), 0);
+    std::string point_to_del_name = model_->data(point_to_del_index).toString().toStdString();
+    point_pool_.erase(point_to_del_name);
+    model_->removeRow(index.row());
 }
 
-void PointPool::deletePoint(const std::string &pointName)
+void PointPool::deletePoint(const std::string &point_name)
 {
-    for(int i = 0;i < m_Model->rowCount(); ++i) {
-        if(m_Model->item(i)->text().toStdString() == pointName) {
-            m_PointPool.erase(pointName);
-            m_Model->removeRow(i);
+    for(int i = 0;i < model_->rowCount(); ++i) {
+        if(model_->item(i)->text().toStdString() == point_name) {
+            point_pool_.erase(point_name);
+            model_->removeRow(i);
             break;
         }
     }
@@ -82,9 +82,9 @@ void PointPool::deletePoint(const std::string &pointName)
 
 void PointPool::deleteEvent(QModelIndex index)
 {
-    QModelIndex pointToDelIndex = m_Model->index(index.row(), 0);
-    std::string pointToDelName = m_Model->data(pointToDelIndex).toString().toStdString();
-    emit(CallTaskListToCheckIfContainThisPoint(pointToDelName));
+    QModelIndex point_to_del_index = model_->index(index.row(), 0);
+    std::string point_to_del_name = model_->data(point_to_del_index).toString().toStdString();
+    emit(CallTaskListToCheckIfContainThisPoint(point_to_del_name));
     // deletePoint(index);
 }
 
@@ -108,12 +108,12 @@ QModelIndex PointPool::addPoint(const std::string &point_name, const MovePointIn
         }
         point_item->appendRow({group_item, newStdString("JOINT")});
     }
-    m_Model->appendRow({point_item, newQString("")});
-    m_PointPool[point_name] = move_group_state;
-    return m_Model->indexFromItem(point_item);
+    model_->appendRow({point_item, newQString("")});
+    point_pool_[point_name] = move_group_state;
+    return model_->indexFromItem(point_item);
 }
 
-void PointPool::startDrag(Qt::DropActions supportedActions)
+void PointPool::startDrag(Qt::DropActions)
 {
     QModelIndex index = currentIndex();
     if (!index.isValid()) return;
@@ -121,16 +121,16 @@ void PointPool::startDrag(Qt::DropActions supportedActions)
     if (index.column() != 0) return;
 
     QString text = model()->data(index, Qt::DisplayRole).toString();
-    QMimeData *mimeData = new QMimeData;
-    mimeData->setText(text);
+    QMimeData *mime_data = new QMimeData;
+    mime_data->setText(text);
 
     QDrag *drag = new QDrag(this);
-    drag->setMimeData(mimeData);
+    drag->setMimeData(mime_data);
     drag->exec(Qt::CopyAction);
 }
 
-void PointPool::modifyPointName(const std::string &oldName, const std::string &newName)
+void PointPool::modifyPointName(const std::string &oldName, const std::string &new_name)
 {
-    m_PointPool[newName] = m_PointPool[oldName];
-    m_PointPool.erase(oldName);
+    point_pool_[new_name] = point_pool_[oldName];
+    point_pool_.erase(oldName);
 }

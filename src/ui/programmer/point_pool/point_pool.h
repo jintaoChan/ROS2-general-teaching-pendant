@@ -22,10 +22,10 @@ public:
 
 public:
     auto getPointsName() const -> QStringList;
-    auto getPoint(const std::string& pointName) const -> MovePointInfo;
-    void addPoint(const MovePointInfo& moveGroupsState);
+    auto getPoint(const std::string& point_name) const -> MovePointInfo;
+    void addPoint(const MovePointInfo& move_groups_state);
     void deletePoint(QModelIndex index);
-    void deletePoint(const std::string& pointName);
+    void deletePoint(const std::string& point_name);
 
 public:
     virtual void deleteEvent(QModelIndex index) override;
@@ -38,13 +38,13 @@ signals:
     void CallTaskListToCheckIfContainThisPoint(const std::string& name);
 
 public slots:
-    void modifyPointName(const std::string& oldName, const std::string& newName);
+    void modifyPointName(const std::string& oldName, const std::string& new_name);
 
 private:
     Ui::PointPool *ui;
-    ItemFilterDelegate* m_PointPoolItemFilterDelegate;
-    QStandardItemModel* m_Model;
-    MovePointInfos m_PointPool;
+    ItemFilterDelegate* point_poolItem_filter_delegate_;
+    QStandardItemModel* model_;
+    MovePointInfos point_pool_;
 };
 
 

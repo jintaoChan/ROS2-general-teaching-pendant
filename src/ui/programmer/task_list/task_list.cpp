@@ -3,9 +3,9 @@
 TaskList::TaskList(QWidget *parent)
     : TreeViewWithKeyEvent(parent)
 {
-    m_Model = new QStandardItemModel;
-    m_Model->setHorizontalHeaderLabels(QStringList() << "Name");
-    setModel(m_Model);
+    model_ = new QStandardItemModel;
+    model_->setHorizontalHeaderLabels(QStringList() << "Name");
+    setModel(model_);
     m_ItemFilterDelegate = new ItemFilterDelegate(this);
     setItemDelegate(m_ItemFilterDelegate);
     connect(m_ItemFilterDelegate, &ItemFilterDelegate::itemAdded, this, &TaskList::addTask);
@@ -31,10 +31,10 @@ void TaskList::modifyTaskName(const std::string &oldTaskName, const std::string 
 
 void TaskList::deleteTask(const std::string &taskName)
 {
-    for(int i = 0;i < m_Model->rowCount(); ++i) {
-        if(m_Model->item(i)->text().toStdString() == taskName) {
+    for(int i = 0;i < model_->rowCount(); ++i) {
+        if(model_->item(i)->text().toStdString() == taskName) {
             m_TaskLists.erase(taskName);
-            m_Model->removeRow(i);
+            model_->removeRow(i);
             break;
         }
     }
@@ -47,16 +47,16 @@ QStandardItemModel *TaskList::getTask(const std::string &taskName) const
 
 void TaskList::deleteEvent(QModelIndex index)
 {
-    auto name = m_Model->index(index.row(), index.column()).data().toString().toStdString();
+    auto name = model_->index(index.row(), index.column()).data().toString().toStdString();
     emit(TaskDeleted(m_TaskLists[name]));
     deleteTask(name);
 }
 
-void TaskList::CheckTaskListIfContainThisPoint(const std::string& pointName)
+void TaskList::CheckTaskListIfContainThisPoint(const std::string& point_name)
 {
     QStringList involvedTasks;
     for(const auto& task: m_TaskLists) {
-        bool found = findChildrenWithText(task.second->invisibleRootItem(), QString::fromStdString(pointName));
+        bool found = findChildrenWithText(task.second->invisibleRootItem(), QString::fromStdString(point_name));
         if(found){
             involvedTasks.push_back(QString::fromStdString(task.first));
         }
@@ -65,17 +65,17 @@ void TaskList::CheckTaskListIfContainThisPoint(const std::string& pointName)
         QMessageBox::StandardButton reply = QMessageBox::question(
             this,
             "Warning",
-            QString("Tasks: \"%1\" exist point \"%2\" . Do you want to delete it along with the one in above tasks?").arg(involvedTasks.join(", "), QString::fromStdString(pointName)),
+            QString("Tasks: \"%1\" exist point \"%2\" . Do you want to delete it along with the one in above tasks?").arg(involvedTasks.join(", "), QString::fromStdString(point_name)),
             QMessageBox::Yes | QMessageBox::No
         );
         bool allowDelete = (reply == QMessageBox::Yes);
         if(!allowDelete) { return; }
 
         for(const auto& task: m_TaskLists) {
-            deleteChildrenWithText(task.second->invisibleRootItem(), QString::fromStdString(pointName));
+            deleteChildrenWithText(task.second->invisibleRootItem(), QString::fromStdString(point_name));
         }
     }
 
-    emit(ConfirmPointPoolToDeletedPoint(pointName));
+    emit(ConfirmPointPoolToDeletedPoint(point_name));
 }
 

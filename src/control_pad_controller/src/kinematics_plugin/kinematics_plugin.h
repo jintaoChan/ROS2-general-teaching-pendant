@@ -31,6 +31,8 @@ public:
     void selectCoordinateSystem(const ControlCoordinateSystemType& coord_sys);
     void refreshCoordinateSystem();// tool interchange
 
+    KDL::Frame tcpCalibration(const MovePointInfos& points);
+
 private:
     void cartesianJogCallback();
     void jointJogCallback();
@@ -43,7 +45,7 @@ private:
 
 private:
     void resetSolver();
-    KDL::Vector tcpCalibration(const std::vector<KDL::Frame>& points);
+    KDL::Frame tcpCalibration(const std::vector<KDL::Frame>& points);
 
 private:
     KDL::Frame pose2KDLFrame(geometry_msgs::msg::Pose pose);

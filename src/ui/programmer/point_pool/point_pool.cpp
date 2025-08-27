@@ -3,7 +3,7 @@
 #include <QInputDialog>
 #include "point_pool.h"
 
-PointPool::PointPool(QWidget *parent)
+PointPoolWidget::PointPoolWidget(QWidget *parent)
     : TreeViewWithKeyEvent(parent)
 {
     model_ = new QStandardItemModel;
@@ -17,7 +17,7 @@ PointPool::PointPool(QWidget *parent)
             &ItemFilterDelegate::itemAdded,
             point_poolItem_filter_delegate_,
             [this](const std::string& new_name){emit point_poolItem_filter_delegate_->itemModified("", new_name);});
-    connect(point_poolItem_filter_delegate_, &ItemFilterDelegate::itemModified, this, &PointPool::modifyPointName);
+    connect(point_poolItem_filter_delegate_, &ItemFilterDelegate::itemModified, this, &PointPoolWidget::modifyPointName);
     auto& robot_des = RobotHandle::instance();
     MovePointInfos preset_points = robot_des.getPresetGroupState();
     for(const auto& point : preset_points){
@@ -30,7 +30,7 @@ PointPool::PointPool(QWidget *parent)
     show();
 }
 
-QStringList PointPool::getPointsName() const
+QStringList PointPoolWidget::getPointsName() const
 {
     QStringList res;
     for(int i = 0 ;i < model_->rowCount(); ++i) {
@@ -39,12 +39,12 @@ QStringList PointPool::getPointsName() const
     return res;
 }
 
-MovePointInfo PointPool::getPoint(const std::string &point_name) const
+MovePointInfo PointPoolWidget::getPoint(const std::string &point_name) const
 {
-    return point_pool_.at(point_name);
+    return PointPool::instance().getPoint(point_name);
 }
 
-void PointPool::addPoint(const MovePointInfo &move_groups_state)
+void PointPoolWidget::addPoint(const MovePointInfo &move_groups_state)
 {
     bool ok;
     QString text = QInputDialog::getText(this, tr("Add a point"),
@@ -61,26 +61,26 @@ void PointPool::addPoint(const MovePointInfo &move_groups_state)
     delete editor;
 }
 
-void PointPool::deletePoint(QModelIndex index)
+void PointPoolWidget::deletePoint(QModelIndex index)
 {
     QModelIndex point_to_del_index = model_->index(index.row(), 0);
     std::string point_to_del_name = model_->data(point_to_del_index).toString().toStdString();
-    point_pool_.erase(point_to_del_name);
+    PointPool::instance().deletePoint(point_to_del_name);
     model_->removeRow(index.row());
 }
 
-void PointPool::deletePoint(const std::string &point_name)
+void PointPoolWidget::deletePoint(const std::string &point_name)
 {
     for(int i = 0;i < model_->rowCount(); ++i) {
         if(model_->item(i)->text().toStdString() == point_name) {
-            point_pool_.erase(point_name);
+            PointPool::instance().deletePoint(point_name);
             model_->removeRow(i);
             break;
         }
     }
 }
 
-void PointPool::deleteEvent(QModelIndex index)
+void PointPoolWidget::deleteEvent(QModelIndex index)
 {
     QModelIndex point_to_del_index = model_->index(index.row(), 0);
     std::string point_to_del_name = model_->data(point_to_del_index).toString().toStdString();
@@ -88,7 +88,7 @@ void PointPool::deleteEvent(QModelIndex index)
     // deletePoint(index);
 }
 
-QModelIndex PointPool::addPoint(const std::string &point_name, const MovePointInfo &move_group_state)
+QModelIndex PointPoolWidget::addPoint(const std::string &point_name, const MovePointInfo &move_group_state)
 {
     QStandardItem* point_item = newStdString(point_name, true);
     for(const auto& group : move_group_state) {
@@ -109,11 +109,11 @@ QModelIndex PointPool::addPoint(const std::string &point_name, const MovePointIn
         point_item->appendRow({group_item, newStdString("JOINT")});
     }
     model_->appendRow({point_item, newQString("")});
-    point_pool_[point_name] = move_group_state;
+    PointPool::instance().addPoint(point_name, move_group_state);
     return model_->indexFromItem(point_item);
 }
 
-void PointPool::startDrag(Qt::DropActions)
+void PointPoolWidget::startDrag(Qt::DropActions)
 {
     QModelIndex index = currentIndex();
     if (!index.isValid()) return;
@@ -129,8 +129,9 @@ void PointPool::startDrag(Qt::DropActions)
     drag->exec(Qt::CopyAction);
 }
 
-void PointPool::modifyPointName(const std::string &oldName, const std::string &new_name)
+void PointPoolWidget::modifyPointName(const std::string &old_name, const std::string &new_name)
 {
-    point_pool_[new_name] = point_pool_[oldName];
-    point_pool_.erase(oldName);
+    auto old_point = PointPool::instance().getPoint(old_name);
+    PointPool::instance().deletePoint(old_name);
+    PointPool::instance().addPoint(new_name, old_point);
 }

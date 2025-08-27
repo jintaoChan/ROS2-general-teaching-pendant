@@ -7,6 +7,8 @@
 #include <QButtonGroup>
 #include <QLabel>
 #include <QLineEdit>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include "robot_handle.h"
 #include "tool_frame_widget.h"
 
@@ -58,7 +60,7 @@ public:
     bool isChecked() const { return check_box_->isChecked(); }
     void setChecked(bool c) { check_box_->setChecked(c); }
 
-    QLineEdit* lineEdit() const { return edit_; }
+    QLineEdit* line_edit() const { return edit_; }
     QCheckBox* getCheckBox() const { return check_box_; }
 
     const int& getIndex() const { return index_; }
@@ -85,6 +87,47 @@ private:
     QCheckBox* check_box_;
 };
 
+class StringSelectionDialog : public QDialog {
+    Q_OBJECT
+public:
+    StringSelectionDialog(const std::vector<std::string>& items, QWidget *parent = nullptr)
+        : QDialog(parent)
+    {
+        setWindowTitle("Please select points to calibrate");
+
+        auto *layout = new QVBoxLayout(this);
+
+        list_widget = new QListWidget(this);
+        list_widget->setSelectionMode(QAbstractItemView::NoSelection);
+        list_widget->setAlternatingRowColors(true);
+
+        for (const auto &s : items) {
+            QListWidgetItem *item = new QListWidgetItem(QString::fromStdString(s), list_widget);
+            item->setCheckState(Qt::Unchecked);
+        }
+
+        layout->addWidget(list_widget);
+
+        QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+        connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
+        connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
+        layout->addWidget(buttonBox);
+    }
+
+    std::vector<std::string> selectedItems() const {
+        std::vector<std::string> result;
+        for (int i = 0; i < list_widget->count(); ++i) {
+            QListWidgetItem *item = list_widget->item(i);
+            if (item->checkState() == Qt::Checked) {
+                result.push_back(item->text().toStdString());
+            }
+        }
+        return result;
+    }
+
+private:
+    QListWidget *list_widget;
+};
 
 namespace Ui {
 class TCP;
@@ -103,8 +146,10 @@ signals:
 private slots:
     void on_add_new_button_clicked();
 
+    void on_calibrate_button_clicked();
+
 private:
-    ListItemWidget* addNewToolFrame(const QString& name);
+    ListItemWidget* addNewToolFrame(const QString& name, const KDL::Frame& frame = KDL::Frame{});
     QListWidgetItem* findItemByWidget(QListWidget* list, QWidget* w);
 
 private:

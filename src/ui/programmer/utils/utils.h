@@ -13,33 +13,33 @@ public:
 
     void setModelData(QWidget *editor, QAbstractItemModel *model,
                       const QModelIndex &index) const override {
-        QLineEdit *lineEdit = qobject_cast<QLineEdit *>(editor);
-        QString newText = lineEdit->text().trimmed();
-        QString oldText = index.data().toString().trimmed();
+        QLineEdit *line_edit = qobject_cast<QLineEdit *>(editor);
+        QString new_text = line_edit->text().trimmed();
+        QString old_text = index.data().toString().trimmed();
 
-        if (lineEdit) {
-            if (newText.isEmpty()) {
+        if (line_edit) {
+            if (new_text.isEmpty()) {
                 QMessageBox::warning(editor, "Warning", "Empty name is not allowed");
-                if(oldText.isEmpty()){
+                if(old_text.isEmpty()){
                     model->removeRow(index.row());
                 }
                 return;
             }
         }
-        int rowCount = model->rowCount(index.parent());
-        for (int i = 0; i < rowCount; ++i) {
+        int row_count = model->rowCount(index.parent());
+        for (int i = 0; i < row_count; ++i) {
             if (i == index.row()) continue;
             QModelIndex sibling = model->index(i, index.column(), index.parent());
-            if (sibling.data().toString() == newText) {
+            if (sibling.data().toString() == new_text) {
                 model->removeRow(index.row(), index.parent());
                 QMessageBox::warning(editor, "Warning", "Name Repetition");
                 return;
             }
         }
-        if (oldText.isEmpty()) {
-            emit itemAdded(newText.toStdString());
-        } else if (oldText != newText) {
-            emit itemModified(oldText.toStdString(), newText.toStdString());
+        if (old_text.isEmpty()) {
+            emit itemAdded(new_text.toStdString());
+        } else if (old_text != new_text) {
+            emit itemModified(old_text.toStdString(), new_text.toStdString());
         }
         QStyledItemDelegate::setModelData(editor, model, index);
     }
@@ -66,14 +66,14 @@ public:
 
     void setEditorData(QWidget *editor, const QModelIndex &index) const override {
         QString value = index.model()->data(index, Qt::EditRole).toString();
-        QLineEdit *lineEdit = static_cast<QLineEdit *>(editor);
-        lineEdit->setText(value);
+        QLineEdit *line_edit = static_cast<QLineEdit *>(editor);
+        line_edit->setText(value);
     }
 
     void setModelData(QWidget *editor, QAbstractItemModel *model,
                       const QModelIndex &index) const override {
-        QLineEdit *lineEdit = static_cast<QLineEdit *>(editor);
-        model->setData(index, lineEdit->text(), Qt::EditRole);
+        QLineEdit *line_edit = static_cast<QLineEdit *>(editor);
+        model->setData(index, line_edit->text(), Qt::EditRole);
     }
 };
 

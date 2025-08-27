@@ -15,8 +15,8 @@ TaskWidget::TaskWidget(SettingPanel* setting_panel, QWidget *parent)
     ui->setupUi(this);
     connect(ui->task_list, &QTreeView::doubleClicked, this, &TaskWidget::on_task_item_clicked);
     connect(ui->task_list, &TaskList::TaskDeleted, ui->task_detail, &TaskDetail::TaskDeleted);
-    connect(ui->point_pool, &PointPool::CallTaskListToCheckIfContainThisPoint, ui->task_list, &TaskList::CheckTaskListIfContainThisPoint);
-    connect(ui->task_list, &TaskList::ConfirmPointPoolToDeletedPoint, ui->point_pool, static_cast<void(PointPool::*)(const std::string&)>(&PointPool::deletePoint));
+    connect(ui->point_pool, &PointPoolWidget::CallTaskListToCheckIfContainThisPoint, ui->task_list, &TaskList::CheckTaskListIfContainThisPoint);
+    connect(ui->task_list, &TaskList::ConfirmPointPoolToDeletedPoint, ui->point_pool, static_cast<void(PointPoolWidget::*)(const std::string&)>(&PointPoolWidget::deletePoint));
 }
 
 TaskWidget::~TaskWidget()

@@ -4,9 +4,11 @@
 #include <QGridLayout>
 #include <QMessageBox>
 #include <QKeyEvent>
+#include <QInputDialog>
 #include "kinematics_plugin.h"
 #include "tcp.h"
 #include "ui_tcp.h"
+#include "point_pool.h"
 
 TCP::TCP(QWidget *parent)
     : QWidget{parent},
@@ -77,15 +79,15 @@ void TCP::on_add_new_button_clicked()
     widget->startEdit();
 }
 
-ListItemWidget* TCP::addNewToolFrame(const QString &name)
+ListItemWidget* TCP::addNewToolFrame(const QString &name, const KDL::Frame& frame)
 {
     QListWidgetItem* item = new QListWidgetItem(ui_->tcp_list);
     ListItemWidget* widget = new ListItemWidget(name, ui_->tcp_list->count(), ui_->tcp_list);
-    widget->lineEdit()->setReadOnly(true);
+    widget->line_edit()->setReadOnly(true);
     item->setSizeHint(widget->sizeHint());
     ui_->tcp_list->addItem(item);
     ui_->tcp_list->setItemWidget(item, widget);
-    connect(widget, &ListItemWidget::editFinished, this, [this, widget](const auto& new_name, const auto& old_name){
+    connect(widget, &ListItemWidget::editFinished, this, [this, widget, frame](const auto& new_name, const auto& old_name){
         if(old_name.isEmpty()) {
             QListWidgetItem* item = findItemByWidget(ui_->tcp_list, widget);
             if (new_name.isEmpty() || tool_info_.count(new_name.toStdString())) {
@@ -96,7 +98,7 @@ ListItemWidget* TCP::addNewToolFrame(const QString &name)
                 widget->deleteLater();
             }
             else {
-                RobotHandle::instance().addToolFrame(new_name.toStdString(), KDL::Frame{});
+                RobotHandle::instance().addToolFrame(new_name.toStdString(), frame);
             }
         }
         else {
@@ -134,3 +136,22 @@ QListWidgetItem* TCP::findItemByWidget(QListWidget* list, QWidget* w) {
     }
     return nullptr;
 }
+
+void TCP::on_calibrate_button_clicked()
+{
+    auto name_list = PointPool::instance().getAllPointsName();
+    std::vector<std::string> selected;
+    StringSelectionDialog dlg(name_list);
+    if (dlg.exec() == QDialog::Accepted) {
+        selected = dlg.selectedItems();
+        MovePointInfos points;
+        for(const auto& s : selected) {
+            points[s] = PointPool::instance().getPoint((s));
+        }
+        auto result = KinematicsPlugin::instance().tcpCalibration(points);
+        auto widget = addNewToolFrame("", result);
+        widget->startEdit();
+    }
+
+}
+

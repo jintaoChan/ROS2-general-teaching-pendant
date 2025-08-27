@@ -4,6 +4,7 @@
 #include "robot_handle.h"
 #include "controller_switcher.h"
 #include "kinematics_plugin.h"
+#include "point_pool.h"
 
 int main(int argc, char *argv[])
 {
@@ -25,7 +26,7 @@ int main(int argc, char *argv[])
     RobotHandle::init(robot_handle_node);
     KinematicsPlugin::init(kinematics_plugin_node);
     ControllerSwitcher::init(controller_switcher_node);
-
+    PointPool::init();
 
     QApplication a(argc, argv);
     MainWindow w;

@@ -19,7 +19,7 @@
      <item>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
-        <widget class="QListWidget" name="tcp_list"/>
+        <widget class="Qlist_widget" name="tcp_list"/>
        </item>
        <item>
         <widget class="QPushButton" name="add_new_button">

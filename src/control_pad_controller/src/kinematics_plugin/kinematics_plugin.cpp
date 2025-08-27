@@ -376,14 +376,40 @@ void KinematicsPlugin::remoteCartesianMoveCallback(const geometry_msgs::msg::Pos
     }
 }
 
-KDL::Vector KinematicsPlugin::tcpCalibration(const std::vector<KDL::Frame> &points)
+KDL::Frame KinematicsPlugin::tcpCalibration(const MovePointInfos &points)
+{
+    std::vector<KDL::Frame> input;
+    input.reserve(points.size());
+    auto fk_solver = std::make_unique<KDL::ChainFkSolverPos_recursive>(default_kdl_chain_);
+
+    for(const auto& p : points) {
+        KDL::JntArray for_fk(joints_num_);
+        KDL::Frame frame;
+        for(const auto& g: p.second) {
+            const auto& joint_names = g.second.JointNames;
+            const auto& joint_value = g.second.Values;
+            for(size_t i = 0; i < joint_names.size(); ++i) {
+                auto name_it = std::find(joints_names_.begin(), joints_names_.end(), joint_names[i]);
+                if(name_it != joints_names_.end()) {
+                    auto name_idx = std::distance(joints_names_.begin(), name_it);
+                    for_fk(name_idx) = joint_value[i];
+                }
+            }
+        }
+        fk_solver->JntToCart(for_fk, frame);
+        input.push_back(frame);
+    }
+    return tcpCalibration(input);
+}
+
+KDL::Frame KinematicsPlugin::tcpCalibration(const std::vector<KDL::Frame> &points)
 {
     const auto& size = points.size();
     if(size < 3) {
         RCLCPP_ERROR(node_->get_logger(), "TCP calibration need 3 pose at least!");
         return {};
     }
-    int row_size = 3 * (int)std::floor(3 * size * (size - 1) / 2);
+    int row_size = 3 * (int)std::floor(size * (size - 1) / 2);
     Eigen::MatrixXd A(row_size, 3), b(row_size, 1);
     size_t count = 0;
     for(size_t i = 0; i < size - 1; ++i) {
@@ -402,7 +428,8 @@ KDL::Vector KinematicsPlugin::tcpCalibration(const std::vector<KDL::Frame> &poin
         }
     }
     auto x = (A.transpose() * A).inverse() * A.transpose() * b;
-    KDL::Vector res{x(0), x(1), x(2)};
+    KDL::Frame tool2ee(KDL::Rotation::Identity(), KDL::Vector(x(0), x(1), x(2)));
+    return tool2ee.Inverse();
 }
 
 void KinematicsPlugin::resetSolver()

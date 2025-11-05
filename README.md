@@ -45,7 +45,7 @@ This file is used to start your custom controller.
 c. Configure motor driver parameters in your YAML files.
 For details, refer to ethercat_driver_ros2.
 
-3. Run
+### 3. Run
 
 ```cmd
 ros2 launch auto_store_robot_moveit_config launch.py   # replace with your own MoveIt config package

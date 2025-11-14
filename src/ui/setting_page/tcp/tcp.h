@@ -9,6 +9,7 @@
 #include <QLineEdit>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <kdl/frames.hpp>
 #include "robot_handle.h"
 #include "tool_frame_widget.h"
 

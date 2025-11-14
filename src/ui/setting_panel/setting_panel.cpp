@@ -41,6 +41,10 @@ SettingPanel::SettingPanel(QWidget *parent)
     QObject::connect(ui_->horizontalSlider_velocity, &QSlider::valueChanged, [&](int value){ ui_->label_horizontalSlider_velocity->setText(QString::number(value) + QString(" %")); });
     ui_->horizontalSlider_velocity->setValue(1);
     ui_->horizontalSlider_velocity->setValue(0);
+
+    timer_ = new QTimer(this);
+    connect(timer_, &QTimer::timeout, this, &SettingPanel::regularUpdate);
+    timer_->start(20);
 }
 
 SettingPanel::~SettingPanel()
@@ -61,6 +65,31 @@ double SettingPanel::getVelocity() const
 ControlCoordinateSystemType SettingPanel::getCoordinateSystem()
 {
     return control_coordinate_system_type_;
+}
+
+void SettingPanel::regularUpdate()
+{
+    const auto& is_running = RobotHandle::instance().isRunning();
+    QString styleSheet;
+    if(is_running) {
+        styleSheet = R"(
+            QLabel#running_state_label {
+                border-radius: 10px;
+                border: 1px solid black;
+                background-color: yellow;
+            }
+        )";
+    }
+    else{
+        styleSheet = R"(
+            QLabel#running_state_label {
+                border-radius: 10px;
+                border: 1px solid black;
+                background-color: green;
+            }
+        )";
+    }
+    ui_->running_state_label->setStyleSheet(styleSheet);
 }
 
 

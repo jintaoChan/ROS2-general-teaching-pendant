@@ -18,11 +18,6 @@ PointPoolWidget::PointPoolWidget(QWidget *parent)
             point_poolItem_filter_delegate_,
             [this](const std::string& new_name){emit point_poolItem_filter_delegate_->itemModified("", new_name);});
     connect(point_poolItem_filter_delegate_, &ItemFilterDelegate::itemModified, this, &PointPoolWidget::modifyPointName);
-    auto& robot_des = RobotHandle::instance();
-    MovePointInfos preset_points = robot_des.getPresetGroupState();
-    for(const auto& point : preset_points){
-        addPoint(point.first, point.second);
-    }
     setModel(model_);
     setDragEnabled(true);
     // setDragDropMode(QAbstractItemView::InternalMove);//drag disable

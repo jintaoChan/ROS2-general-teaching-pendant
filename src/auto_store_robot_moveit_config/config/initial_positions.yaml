@@ -1,8 +1,0 @@
-# Default initial positions for auto_store_robot_moveit_config's ros2_control fake system
-
-initial_positions:
-  joint0: 0
-  joint1: 0
-  joint2: 0
-  joint3: 0
-  joint4: 0

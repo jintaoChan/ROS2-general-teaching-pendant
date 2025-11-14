@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="ur_config">
+
+
+  <xacro:include filename="$(find ur_config)/config/ur_config.ros2_control.xacro" />
+  <xacro:include filename="$(find ur_config)/config/ur_config.urdf" />
+</robot>

@@ -3,6 +3,7 @@
 
 #include <QDoubleValidator>
 #include <QWidget>
+#include <QTimer>
 #include "robot_handle.h"
 
 namespace Ui {
@@ -21,6 +22,7 @@ public:
     double getStep() const;
     double getVelocity() const;
     ControlCoordinateSystemType getCoordinateSystem();
+    void regularUpdate();
 
 signals:
     void on_add_to_point_pool_button_clicked();
@@ -32,6 +34,7 @@ private:
     Ui::SettingPanel *ui_;
     ControlCoordinateSystemType control_coordinate_system_type_;
     int previous_coordinate_index_;
+    QTimer* timer_;
 };
 
 class EmptyOkDoubleValidator : public QDoubleValidator {

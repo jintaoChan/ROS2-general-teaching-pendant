@@ -1,6 +1,8 @@
 #include <QLabel>
+#include <kdl/frames.hpp>
 #include "setting_page.h"
 #include "tcp.h"
+#include "param_identification.h"
 
 SettingPage::SettingPage(QWidget *parent)
     : QWidget{parent}
@@ -8,12 +10,15 @@ SettingPage::SettingPage(QWidget *parent)
     layout = new QGridLayout(this);
     list_widget = new QListWidget;
     list_widget->addItem("TCP");
+    list_widget->addItem("Param Identification");
 
 
     stacked_widget = new QStackedWidget;
 
     TCP* tcp = new TCP(this);
+    ParamIdentification* iden = new ParamIdentification(this);
     stacked_widget->addWidget(tcp);
+    stacked_widget->addWidget(iden);
 
     QObject::connect(list_widget, &QListWidget::currentRowChanged,
                      stacked_widget, &QStackedWidget::setCurrentIndex);

@@ -9,6 +9,8 @@
 #include "move_executor.h"
 #include "setting_panel.h"
 #include "kinematics_plugin.h"
+#include "tf2/LinearMath/Quaternion.h"
+#include "tf2/LinearMath/Matrix3x3.h"
 
 ControlPad::ControlPad(SettingPanel* setting_panel, QWidget *parent)
     : QWidget(parent)
@@ -22,16 +24,14 @@ ControlPad::ControlPad(SettingPanel* setting_panel, QWidget *parent)
     connect(cartesianPad, &CartesianPad::MoveButtonClicked, this, [this](MoveButtonType type, MoveButtonEvent event, size_t idx){emit MoveCommander(type, event, idx);});
     hlayout->addWidget(cartesianPad);
     QVBoxLayout* vlayout = new QVBoxLayout(this);
-    auto joint_groups_names = robot_des.getJointGroupsNames();
-    for(const auto& jg_name: joint_groups_names) {
-        JointGroupWidget* jg = new JointGroupWidget(jg_name, this);
-        auto joint = robot_des.getJointGroupJointNames(jg_name);
-        for(const auto& jt : joint) {
-            jg->addJoint(jt);
-            connect(jg, &JointGroupWidget::MoveButtonClicked, [this](MoveButtonType type, MoveButtonEvent event, const std::string& joint_name){emit MoveCommander(type, event, joint_name);});
-        }
-        vlayout->addWidget(jg);
+
+    JointGroupWidget* jg = new JointGroupWidget("tmp group", this);
+    auto joints = robot_des.getJointsName();
+    for(const auto& jt : joints) {
+        jg->addJoint(jt);
+        connect(jg, &JointGroupWidget::MoveButtonClicked, [this](MoveButtonType type, MoveButtonEvent event, const std::string& joint_name){emit MoveCommander(type, event, joint_name);});
     }
+    vlayout->addWidget(jg);
     hlayout->addLayout(vlayout);
 
     connect(setting_panel_, &SettingPanel::on_add_to_point_pool_button_clicked, this, [this]() {
@@ -53,46 +53,46 @@ ControlPad::ControlPad(SettingPanel* setting_panel, QWidget *parent)
 }
 
 void ControlPad::MoveCommander(MoveButtonType type, MoveButtonEvent event, const std::string &joint_name) const {
-    JointsVelocity joint_velocity;
     JointsPosition joint_position;
+    const auto& velo_ratio = setting_panel_->getVelocity();
     switch(type){
     case MoveButtonType::BACKWARD_VELOCITY: {
         if(event == MoveButtonEvent::PRESSED){
-            joint_velocity[joint_name].joint_value = -setting_panel_->getVelocity() * RobotHandle::instance().getJointsVelocityLimits().at(joint_name).joint_value;
+            joint_position[joint_name].joint_value = RobotHandle::instance().getJointLowerLimit(joint_name);
+            KinematicsPlugin::instance().moveJointPositionAbsolutely(joint_position, velo_ratio);
         }
         else if(event == MoveButtonEvent::RELEASED){
-            joint_velocity[joint_name].joint_value = 0;
+            KinematicsPlugin::instance().stop();
         }
-        RobotHandle::instance().moveJointByVelcoity(joint_velocity);
         break;
     }
     case MoveButtonType::BACKWARD_STEP: {
         if(event == MoveButtonEvent::CLICKED)
             joint_position[joint_name].joint_value = current_position_.at(joint_name).joint_value - setting_panel_->getStep();
-        KinematicsPlugin::instance().moveJointPositionAbsolutely(joint_position);
+        KinematicsPlugin::instance().moveJointPositionAbsolutely(joint_position, velo_ratio);
         break;
     }
     case MoveButtonType::FORWARD_STEP: {
         if(event == MoveButtonEvent::CLICKED)
             joint_position[joint_name].joint_value = current_position_.at(joint_name).joint_value + setting_panel_->getStep();
-        KinematicsPlugin::instance().moveJointPositionAbsolutely(joint_position);
+        KinematicsPlugin::instance().moveJointPositionAbsolutely(joint_position, velo_ratio);
         break;
     }
     case MoveButtonType::FORWARD_VELOCITY: {
         if(event == MoveButtonEvent::PRESSED){
-            joint_velocity[joint_name].joint_value = setting_panel_->getVelocity() * RobotHandle::instance().getJointsVelocityLimits().at(joint_name).joint_value;
+            joint_position[joint_name].joint_value = RobotHandle::instance().getJointUpperLimit(joint_name);
+            KinematicsPlugin::instance().moveJointPositionAbsolutely(joint_position, velo_ratio);
         }
         else if(event == MoveButtonEvent::RELEASED){
-            joint_velocity[joint_name].joint_value = 0;
+            KinematicsPlugin::instance().stop();
         }
-        RobotHandle::instance().moveJointByVelcoity(joint_velocity);
         break;
     }
     }
 }
 
 void ControlPad::MoveCommander(MoveButtonType type, MoveButtonEvent event, size_t idx) {
-    ControllerSwitcher::instance().switchToControlPad();
+    // ControllerSwitcher::instance().switchToControlPad();
     std::array<double, 6> arr{0,0,0,0,0,0};
     switch(type){
     case MoveButtonType::BACKWARD_VELOCITY: {

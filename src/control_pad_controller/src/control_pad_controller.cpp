@@ -32,7 +32,7 @@ namespace control_pad
         default_mode_ = auto_declare<uint8_t>("mode.default", default_mode_);
         position_mode_ = auto_declare<uint8_t>("mode.position", position_mode_);
         velocity_mode_ = auto_declare<uint8_t>("mode.velocity", velocity_mode_);
-
+        current_mode_ = default_mode_;
 
         return CallbackReturn::SUCCESS;
     }
@@ -73,14 +73,17 @@ namespace control_pad
     controller_interface::CallbackReturn ControlPadController::on_configure(const rclcpp_lifecycle::State &)
     {
         auto moveCallback =
-            [this](const std::shared_ptr<sensor_msgs::msg::JointState> msg) -> void
+            [this](const std::shared_ptr<std_msgs::msg::Int8> msg) -> void
         {
-            move_msg_ = *msg;
-            new_move_msg_ = true;
+            if(current_mode_ != msg->data) {
+                new_mode = true;
+            }
+            current_mode_ = msg->data;
         };
+
         
-        move_state_publisher_ = get_node()->create_publisher<sensor_msgs::msg::JointState>("control_pad_controller/control_pad_move_state", 10);
-        move_command_subscriber_ = get_node()->create_subscription<sensor_msgs::msg::JointState>("control_pad_controller/control_pad_move_cmd", rclcpp::SystemDefaultsQoS(), moveCallback);
+        move_cmd_publisher_ = get_node()->create_publisher<trajectory_msgs::msg::JointTrajectory>("trajectory_controller/joint_trajectory", 10);
+        mode_command_subscriber_ = get_node()->create_subscription<std_msgs::msg::Int8>("mode_controller/command", rclcpp::SystemDefaultsQoS(), moveCallback);
 
         return CallbackReturn::SUCCESS;
     }
@@ -88,12 +91,11 @@ namespace control_pad
     controller_interface::CallbackReturn ControlPadController::on_activate(const rclcpp_lifecycle::State &)
     {
         // clear out vectors in case of restart
-        joint_position_command_interface_.clear();
         joint_position_state_interface_.clear();
-        joint_velocity_command_interface_.clear();
         joint_velocity_state_interface_.clear();
-        joint_mode_command_interface_.clear();
         joint_mode_state_interface_.clear();
+        joint_velocity_cmd_interface_.clear();
+        joint_mode_command_interface_.clear();
         // assign command interfaces
         for (auto &interface : command_interfaces_)
         {
@@ -105,55 +107,29 @@ namespace control_pad
         {
             m_StateInterfaceMap[interface.get_interface_name()]->push_back(interface);
         }
-        switchMode(default_mode_);
         return CallbackReturn::SUCCESS;
     }
 
 
     controller_interface::return_type ControlPadController::update(
-        const rclcpp::Time &time, const rclcpp::Duration & /*period*/)
+        const rclcpp::Time &time, const rclcpp::Duration & period)
     {
-
+        trajectory_msgs::msg::JointTrajectory reset;
+        trajectory_msgs::msg::JointTrajectoryPoint p;
         // Publish joint state
-        sensor_msgs::msg::JointState joint_state;
         for(const auto& state : joint_position_state_interface_){
-            joint_state.position.push_back(state.get().get_optional().value());
+            reset.joint_names.push_back(state.get().get_prefix_name());
+            p.positions.push_back(state.get().get_optional().value());
             // RCLCPP_INFO(get_logger(), "Getting current position\t%s: %f", std::string(state.get().get_name()).c_str(), joint_state.position.back());
         }
-        for(const auto& state : joint_velocity_state_interface_){
-            joint_state.velocity.push_back(state.get().get_optional().value());
-            // RCLCPP_INFO(get_logger(), "Getting current velocity\t%s: %f", std::string(state.get().get_name()).c_str(), joint_state.velocity.back());
-        }
-        move_state_publisher_->publish(joint_state);
-
-
-        if (new_move_msg_)
+        reset.header.stamp = get_node()->get_clock()->now();
+        p.time_from_start = period;
+        reset.points.push_back(p);
+        if (new_mode)
         {
-            m_StartTime = time;
-            new_move_msg_ = false;
-            if(move_msg_.name.size() == move_msg_.position.size() && !joint_position_command_interface_.empty()) {
-                switchMode(position_mode_);
-                for(size_t i = 0 ; i < move_msg_.name.size() ; ++i) {
-                    auto ifIdx = std::find(joint_names_.begin(), joint_names_.end(), move_msg_.name[i]);
-                    if(ifIdx != joint_names_.end()){
-                        joint_position_command_interface_[ifIdx - joint_names_.begin()].get().set_value(move_msg_.position[i]);
-                    }
-                }
-            }
-            else if (move_msg_.name.size() == move_msg_.velocity.size() && !joint_velocity_command_interface_.empty()){
-                switchMode(velocity_mode_);
-                for(size_t i = 0 ; i < move_msg_.name.size() ; ++i) {
-                    auto ifIdx = std::find(joint_names_.begin(), joint_names_.end(), move_msg_.name[i]);
-                    if(ifIdx != joint_names_.end()){
-                        joint_velocity_command_interface_[ifIdx - joint_names_.begin()].get().set_value(move_msg_.velocity[i]);
-                    }
-                }
-            }
-            else {
-                RCLCPP_WARN(get_logger(), "Invalid message! name.size(): %d   position.size(): %d   velocity.size(): %d", move_msg_.name.size(), move_msg_.position.size(), move_msg_.velocity.size());
-            }
+            new_mode = false;
+            move_cmd_publisher_->publish(reset);
         }
-
 
         return controller_interface::return_type::OK;
     }
@@ -165,27 +141,6 @@ namespace control_pad
         return CallbackReturn::SUCCESS;
     }
 
-    void ControlPadController::switchMode(int8_t mode)
-    {
-        current_mode_ = mode;
-        switch(mode){
-            case 0:
-            case 8:
-                for(size_t i = 0; i < joint_position_command_interface_.size(); ++i) {
-                    joint_position_command_interface_[i].get().set_value(joint_position_state_interface_[i].get().get_optional().value());
-                }
-            case 9:
-                for(size_t i = 0; i < joint_velocity_command_interface_.size(); ++i) {
-                    joint_velocity_command_interface_[i].get().set_value(0.0);
-                }
-                for(size_t i = 0; i < joint_mode_command_interface_.size(); ++i) {
-                    joint_mode_command_interface_[i].get().set_value((double)mode);
-                }
-                break;
-            default:
-                RCLCPP_INFO(get_logger(), "Setting a illegal mode! Abort!");
-        }
-    }
 }
 
 #include "pluginlib/class_list_macros.hpp"

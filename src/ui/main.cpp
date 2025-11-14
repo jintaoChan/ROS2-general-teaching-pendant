@@ -1,9 +1,11 @@
 #include <QApplication>
 #include <main_window.h>
 #include <rclcpp/rclcpp.hpp>
+#include "database.h"
 #include "robot_handle.h"
 #include "controller_switcher.h"
 #include "kinematics_plugin.h"
+#include "dynamic_plugin.h"
 #include "point_pool.h"
 
 int main(int argc, char *argv[])
@@ -27,6 +29,7 @@ int main(int argc, char *argv[])
     KinematicsPlugin::init(kinematics_plugin_node);
     ControllerSwitcher::init(controller_switcher_node);
     PointPool::init();
+    DynamicPlugin::init();
 
     QApplication a(argc, argv);
     MainWindow w;

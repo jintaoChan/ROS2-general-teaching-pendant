@@ -3,15 +3,13 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <urdf/model.h>
-#include <kdl_parser/kdl_parser.hpp>
-#include <kdl/tree.hpp>
 #include <kdl/chainfksolverpos_recursive.hpp>
 #include <kdl/chainiksolverpos_nr_jl.hpp>
 #include <kdl/chainiksolvervel_pinv.hpp>
 #include <trac_ik/trac_ik.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <control_msgs/msg/joint_jog.hpp>
-#include <builtin_interfaces/msg/time.hpp>  
+#include <builtin_interfaces/msg/time.hpp>
 #include "singleton.hpp"
 #include "robot_handle.h"
 
@@ -24,8 +22,9 @@ public:
 public:
     void twistRobot(const std::array<double, 6>& velocity_arr);
     void twistRobot(const geometry_msgs::msg::Twist& twist_msg);
-    void moveJointPositionRelatively(const JointsPosition& pos);
-    void moveJointPositionAbsolutely(const JointsPosition& pos);
+    void moveJointPositionRelatively(const JointsPosition& pos, double velo_ratio);
+    void moveJointPositionAbsolutely(const JointsPosition& pos, double velo_ratio);
+    void stop();
 
     geometry_msgs::msg::PoseStamped getCurrentCartesianPose();
     void selectCoordinateSystem(const ControlCoordinateSystemType& coord_sys);
@@ -56,7 +55,6 @@ private:
     urdf::Model urdf_model_;
     std::string root_frame_id_;
     ControlCoordinateSystemType coord_sys_type_{ControlCoordinateSystemType::Base};
-    KDL::Tree kdl_tree_;
     KDL::Chain default_kdl_chain_;
     KDL::Chain kdl_chain_;
     KDL::Segment tool_segment_;
@@ -76,7 +74,7 @@ private:
     rclcpp::Subscription<control_msgs::msg::JointJog>::SharedPtr joint_sub_;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr pose_sub_;
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pose_pub_;
-    JointsVelocity joint_velocity_limit_;
+    double velo_ratio_{0};
     KDL::JntArray current_joint_position_;
     KDL::Rotation selected_coord_system_;
     geometry_msgs::msg::PoseStamped current_pose_;

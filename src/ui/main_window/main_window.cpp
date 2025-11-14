@@ -5,6 +5,8 @@
 #include "task_widget.h"
 #include "setting_panel.h"
 #include "setting_page.h"
+#include "plot_page.h"
+
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -26,6 +28,8 @@ MainWindow::MainWindow(QWidget *parent)
     tab_widget->addTab(task_widget, "Task");
     SettingPage* setting_page = new SettingPage(ui->centralwidget);
     tab_widget->addTab(setting_page, "Setting");
+    PlotPage* plot_page = new PlotPage(10000, ui->centralwidget);
+    tab_widget->addTab(plot_page, "Plot");
 
     main_layout->addWidget(tab_widget);
     main_layout->addWidget(setting_pannel);

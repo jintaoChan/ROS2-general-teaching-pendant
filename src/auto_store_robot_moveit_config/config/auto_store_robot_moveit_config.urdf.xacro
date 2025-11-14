@@ -1,10 +1,7 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="auto_store_robot_moveit_config">
 
-  <link name="world"/>
 
   <xacro:include filename="$(find auto_store_robot_moveit_config)/config/auto_store_robot_moveit_config.ros2_control.xacro" />
   <xacro:include filename="$(find auto_store_robot_moveit_config)/config/auto_store_robot_moveit_config.urdf" />
-  <xacro:motor_drive/>
-  <xacro:auto_store_manipulator/>
 </robot>

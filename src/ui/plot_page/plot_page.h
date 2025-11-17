@@ -26,6 +26,7 @@ private slots:
     void switchGraphContent(const QString& type_name);
     void saveData();
     void freezeWindow();
+    void clear();
 private:
     size_t window_size_;
     QVBoxLayout* main_layout_;
@@ -33,6 +34,7 @@ private:
     QGridLayout* graph_layout_;
     QPushButton* save_button_;
     QPushButton* freeze_button_;
+    QPushButton* clear_button_;
     QComboBox* combobox_;
     QList<PlotWidget*> graph_list_;
 };

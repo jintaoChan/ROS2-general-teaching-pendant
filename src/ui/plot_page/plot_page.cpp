@@ -11,6 +11,7 @@ PlotPage::PlotPage(size_t window_size, QWidget *parent)
     graph_layout_(new QGridLayout(this)),
     save_button_(new QPushButton(this)),
     freeze_button_(new QPushButton(this)),
+    clear_button_(new QPushButton(this)),
     combobox_(new QComboBox(this))
 {
     auto type_list = magic_enum::enum_values<DataTypeEnum>();
@@ -20,14 +21,17 @@ PlotPage::PlotPage(size_t window_size, QWidget *parent)
     }
     save_button_->setText("Save data to clip board");
     freeze_button_->setText("Freeze");
+    clear_button_->setText("Clear");
     control_layout_->addWidget(combobox_);
     control_layout_->addWidget(save_button_);
     control_layout_->addWidget(freeze_button_);
+    control_layout_->addWidget(clear_button_);
     main_layout_->addLayout(control_layout_);
     main_layout_->addLayout(graph_layout_);
     connect(combobox_, &QComboBox::currentTextChanged, this, &PlotPage::switchGraphContent);
     connect(save_button_, &QPushButton::pressed, this, &PlotPage::saveData);
     connect(freeze_button_, &QPushButton::pressed, this, &PlotPage::freezeWindow);
+    connect(clear_button_, &QPushButton::pressed, this, &PlotPage::clear);
     switchGraphContent(combobox_->currentText());
 }
 
@@ -97,4 +101,9 @@ void PlotPage::freezeWindow()
         freeze_button_->setText("Freeze");
     }
 
+}
+
+void PlotPage::clear()
+{
+    DataBase::instance().clear();
 }

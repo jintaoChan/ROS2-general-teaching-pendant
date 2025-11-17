@@ -82,6 +82,7 @@ struct Joint {
 using JointsPosition = std::unordered_map<std::string, Joint>;
 using JointsVelocity = std::unordered_map<std::string, Joint>;
 using JointsAcceleration = std::unordered_map<std::string, Joint>;
+using JointsTorque = std::unordered_map<std::string, Joint>;
 using ToolInfo = std::unordered_map<std::string, KDL::Frame>;
 
 
@@ -96,7 +97,6 @@ public:
 
     // accessors (same as before)
     const urdf::Model& getURDFModel() const;
-    const std::shared_ptr<urdf::ModelInterface>& getURDFTree() const;
     const KDL::Chain& getKDLChain() const;
     const JointsPosition& getCurrentJointPosition() const;
     size_t getJointNums() const;
@@ -131,7 +131,9 @@ public:
     KDL::Frame GetFixedTransform(const KDL::Chain& chain);
     void getToolFrameInfo(ToolInfo& res, const std::string& param_name);
     void getFrameName(std::string& res, const std::string& param_name, const std::vector<std::string>& available_list, const std::string& or_value);
-
+    void setIsRunning(bool is_running);
+    const bool& isRunning() const;
+    void setJointTorqueOffset(const std::string& joint_name, double v);
 
 private:
     class Impl;

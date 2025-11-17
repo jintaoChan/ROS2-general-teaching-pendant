@@ -1,22 +1,46 @@
+#include <QApplication>
 #include <QInputDialog>
 #include <QMessageBox>
 #include <fstream>
 #include <sstream>
+#include <QClipboard>
 #include "robot_handle.h"
+#include "database.h"
 #include "dynamic_plugin.h"
 #include "param_identification.h"
-#include "ui_param_identification.h"
+#include "robot_handle.h"
 
 ParamIdentification::ParamIdentification(QWidget *parent)
-    : QWidget(parent)
-    , ui(new Ui::ParamIdentification)
+    :
+    QWidget(parent),
+    copy_info_button_(new QPushButton(this)),
+    identify_button_(new QPushButton(this)),
+    base_param_size_title_(new QLabel(this)),
+    base_param_size_(new QLabel(this)),
+    base_param_size_layout_(new QHBoxLayout()),
+    layout_(new QVBoxLayout())
 {
-    ui->setupUi(this);
+    base_param_size_title_->setText("Base param size: ");
+    base_param_size_layout_->addWidget(base_param_size_title_);
+    base_param_size_layout_->addWidget(base_param_size_);
+    copy_info_button_->setText("Copy base param to clip board");
+    identify_button_->setText("Start identify by a trajectory");
+    layout_->addLayout(base_param_size_layout_);
+    for(const auto& n : RobotHandle::instance().getJointsName()) {
+        auto sefb = new SimulateExternalForceBar(QString::fromStdString(n), this);
+        sefb_list_.push_back(sefb);
+        layout_->addWidget(sefb);
+    }
+    layout_->addWidget(copy_info_button_);
+    layout_->addWidget(identify_button_);
+    setLayout(layout_);
+    connect(copy_info_button_, &QPushButton::pressed, this, &ParamIdentification::copyInfoClicked);
+    connect(identify_button_, &QPushButton::pressed, this, &ParamIdentification::identifyClicked);
+
 }
 
 ParamIdentification::~ParamIdentification()
 {
-    delete ui;
 }
 
 std::optional<trajectory_msgs::msg::JointTrajectory> ParamIdentification::loadTrajFile(const QString &path)
@@ -67,7 +91,12 @@ std::optional<trajectory_msgs::msg::JointTrajectory> ParamIdentification::loadTr
     return traj;
 }
 
-void ParamIdentification::on_copy_all_info_button_2_clicked()
+void ParamIdentification::copyInfoClicked()
+{
+    std::cout << DynamicPlugin::instance().getBaseParams() << std::endl;
+}
+
+void ParamIdentification::identifyClicked()
 {
     bool ok;
     auto path = QInputDialog::getText(this, tr("Excitation trajectory file"),
@@ -76,9 +105,15 @@ void ParamIdentification::on_copy_all_info_button_2_clicked()
     if(ok){
         auto traj_opt = loadTrajFile(path);
         if(traj_opt.has_value()) {
+            auto sample_start_index = DataBase::instance().getCurrentIndex();
+            decltype(sample_start_index) sample_end_index;
             RobotHandle::instance().moveJointByAbsPosition(traj_opt.value());
+            while(RobotHandle::instance().isRunning()){
+            }
+            sample_end_index = DataBase::instance().getCurrentIndex();
+            DynamicPlugin::instance().identify(sample_start_index, sample_end_index);
         }
-        ui->base_param_size_label->setText(QString::number(DynamicPlugin::instance().getBaseParams().size()));
+        base_param_size_->setText(QString::number(DynamicPlugin::instance().getBaseParams().size()));
     }
 }
 

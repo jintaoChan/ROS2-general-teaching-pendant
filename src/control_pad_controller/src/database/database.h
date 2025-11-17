@@ -13,6 +13,7 @@ enum class DataTypeEnum : char {
     ACCELERATION,
     TORQUE,
     ESTIMATED_TORQUE,
+    ESTIMATED_CARTESIAN_TORQUE,
 };
 
 
@@ -27,8 +28,9 @@ public:
     DataType& operator=(DataType&& other) noexcept = default;
 
     void appendData(const double& d);
-    QList<QPointF> getSnapShot(size_t start, size_t n);
-    QList<QPointF> getSnapShot(size_t n);
+    void clear();
+    QList<QPointF> getSnapShot(size_t start, size_t n) const;
+    QList<QPointF> getSnapShot(size_t n) const;
     const double& getMax() const;
     const double& getMin() const;
     size_t getCurrentSize() const;
@@ -49,8 +51,11 @@ public:
 
 
     void appendData(DataTypeEnum type, std::string joint_name, double d);
+    void clear();
     const DataType& getData(DataTypeEnum type, std::string joint_name) const;
+    std::unordered_map<std::string, std::unordered_map<DataTypeEnum, DataType>> getAllData() const;
     std::string toPlainText() const;
+    size_t getCurrentIndex() const;
 
 private:
     class Impl;

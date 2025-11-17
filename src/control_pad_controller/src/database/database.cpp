@@ -52,7 +52,12 @@ void DataType::appendData(const double &d)
     }
 }
 
-QList<QPointF> DataType::getSnapShot(size_t start, size_t n){
+void DataType::clear()
+{
+    *this = DataType(impl_->buffer_size_);
+}
+
+QList<QPointF> DataType::getSnapShot(size_t start, size_t n) const {
     QList<QPointF> snapshot;
     if(start >=impl_-> head_index_ && impl_->is_full_){
         n = (start + n > impl_->head_index_ + impl_->buffer_size_) ? (impl_->head_index_ + impl_->buffer_size_ - start) : n;
@@ -71,7 +76,7 @@ QList<QPointF> DataType::getSnapShot(size_t start, size_t n){
     return snapshot;
 }
 
-QList<QPointF> DataType::getSnapShot(size_t n){
+QList<QPointF> DataType::getSnapShot(size_t n) const {
     if(!impl_->is_full_){
         return getSnapShot(0, n);
     }
@@ -98,7 +103,7 @@ double DataType::getElement(size_t idx) const {
 }
 
 double DataType::getElementByNow(size_t idx) const {
-    return getElement((impl_->head_index_ + impl_->buffer_size_ - idx) % impl_->buffer_size_);
+    return getElement((impl_->buffer_size_ - idx) % impl_->buffer_size_);
 }
 
 class DataBase::Impl {
@@ -149,6 +154,19 @@ void DataBase::appendData(DataTypeEnum type, std::string joint_name, double d) {
     }
 }
 
+void DataBase::clear()
+{
+    for(auto& i : impl_->data_base_) {
+        for(auto& j : i.second) {
+            j.second.clear();
+        }
+    }
+}
+
+std::unordered_map<std::string, std::unordered_map<DataTypeEnum, DataType>> DataBase::getAllData() const {
+    return impl_->data_base_;
+}
+
 const DataType& DataBase::getData(DataTypeEnum type, std::string joint_name) const {
     return impl_->data_base_.at(joint_name).at(type);
 }
@@ -178,3 +196,9 @@ std::string DataBase::toPlainText() const {
     }
     return res;
 }
+
+size_t DataBase::getCurrentIndex() const
+{
+    return impl_->data_base_.begin()->second.at(DataTypeEnum::POSITION).impl_->head_index_;
+}
+

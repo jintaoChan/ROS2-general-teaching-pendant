@@ -6,13 +6,16 @@
 #include <urdf_parser/urdf_parser.h>
 #include <optional>
 #include "database.h"
+#include "dynamic_plugin.h"
 #include "singleton.hpp"
 #include "functional.hpp"
 #include "controller_switcher.h"
 
 #include <trajectory_msgs/msg/joint_trajectory.hpp>
-#include <control_msgs/msg/joint_trajectory_controller_state.hpp>
+#include <control_msgs/action/follow_joint_trajectory.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
+#include <rclcpp_action/rclcpp_action.hpp>
+#include <control_msgs/msg/joint_trajectory_controller_state.hpp>
 
 class RobotHandle::Impl {
 public:
@@ -20,17 +23,17 @@ public:
     std::optional<rclcpp::Logger> logger_;
     std::shared_ptr<RobotHandle> singleton_;
     urdf::Model model_;
-    std::shared_ptr<::urdf::ModelInterface> urdf_tree_;
     KDL::Tree kdl_tree_;
     KDL::Chain kdl_chain_;
-
-    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_subscription_;
+    
     rclcpp::Subscription<control_msgs::msg::JointTrajectoryControllerState>::SharedPtr controller_state_subscription_;
-    rclcpp::Publisher<trajectory_msgs::msg::JointTrajectory>::SharedPtr move_command_sender_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_subscription_;
+    rclcpp_action::Client<control_msgs::action::FollowJointTrajectory>::SharedPtr action_client_;
 
     int32_t controller_update_period_; //ms
     std::vector<std::string> joint_names_;
     JointsPosition current_joint_position_;
+    JointsTorque joint_torque_offset_; //just use for observer test
     std::string robot_arm_base_link_name_;
     std::string robot_arm_end_link_name_;
     ToolInfo robot_arm_tool_info_;
@@ -42,11 +45,13 @@ public:
     double cartisian_limits_max_trans_dec_;
     double cartisian_limits_max_rot_vel_;
 
-    control_msgs::msg::JointTrajectoryControllerState controller_state_msg_;
+    rclcpp_action::ClientGoalHandle<control_msgs::action::FollowJointTrajectory>::WrappedResult controller_result_;
+    bool is_running_ = false;
 
     void jointStateCallback(const sensor_msgs::msg::JointState &msg);
+    void feedbackCallback(rclcpp_action::ClientGoalHandle<control_msgs::action::FollowJointTrajectory>::SharedPtr, const std::shared_ptr<const control_msgs::action::FollowJointTrajectory::Feedback> feedback);
+    void resultCallback(const rclcpp_action::ClientGoalHandle<control_msgs::action::FollowJointTrajectory>::WrappedResult & result);
     void controllerStateCallback(const control_msgs::msg::JointTrajectoryControllerState &msg);
-
 };
 
 
@@ -61,7 +66,6 @@ RobotHandle::RobotHandle(const std::shared_ptr<rclcpp::Node>& node)
         RCLCPP_ERROR(node->get_logger(), "Failed to parse URDF model.");
         return;
     }
-    impl_->urdf_tree_ = urdf::parseURDF(urdf_string);
     RCLCPP_INFO(node->get_logger(), "Successfully parsed URDF model.");
 
     std::vector<urdf::LinkSharedPtr> link_ptrs;
@@ -69,7 +73,7 @@ RobotHandle::RobotHandle(const std::shared_ptr<rclcpp::Node>& node)
     std::vector<std::string> available_names;
     for(const auto& l: link_ptrs) {
         available_names.push_back(l->name);
-        RCLCPP_INFO(node->get_logger(), "Got frame %s: ", l->name.c_str());
+        RCLCPP_INFO(node->get_logger(), "Got frame: %s", l->name.c_str());
     }
     getFrameName(impl_->robot_arm_base_link_name_, "coordinate_system.base_frame", available_names, available_names.front());
     getFrameName(impl_->robot_arm_end_link_name_, "coordinate_system.end_effector_frame", available_names, available_names.back());
@@ -85,6 +89,7 @@ RobotHandle::RobotHandle(const std::shared_ptr<rclcpp::Node>& node)
         Joint j{impl_->model_.getJoint(joint.getName()), 0};
         impl_->joint_names_.push_back(joint.getName());
         impl_->current_joint_position_[joint.getName()] = j;
+        impl_->joint_torque_offset_[joint.getName()] = j;
     }
     auto buffer_size = AcquireParam<int32_t>("/controller_manager", "database_buffer_size");
     if(buffer_size.has_value()){
@@ -93,16 +98,20 @@ RobotHandle::RobotHandle(const std::shared_ptr<rclcpp::Node>& node)
     else {
         DataBase::init(100 * update_rate, impl_->joint_names_, impl_->controller_update_period_);
     }
+    DynamicPlugin::init();
 
     impl_->cartisian_limits_max_trans_vel_ = AcquireParam<double>("/controller_manager", "cartesian_limits.max_trans_vel").value();
     impl_->cartisian_limits_max_trans_acc_ = AcquireParam<double>("/controller_manager",  "cartesian_limits.max_trans_acc").value();
     impl_->cartisian_limits_max_trans_dec_ = AcquireParam<double>("/controller_manager",  "cartesian_limits.max_trans_dec").value();
     impl_->cartisian_limits_max_rot_vel_ = AcquireParam<double>("/controller_manager",  "cartesian_limits.max_rot_vel").value();
 
-    impl_->joint_state_subscription_ = impl_->node_->create_subscription<sensor_msgs::msg::JointState>("/joint_states", 10, std::bind(&RobotHandle::Impl::jointStateCallback, *this->impl_, std::placeholders::_1));
-    impl_->controller_state_subscription_ = impl_->node_->create_subscription<control_msgs::msg::JointTrajectoryControllerState>("/trajectory_controller/controller_state", 10, std::bind(&RobotHandle::Impl::controllerStateCallback, *this->impl_, std::placeholders::_1));
-    impl_->move_command_sender_ = impl_->node_->create_publisher<trajectory_msgs::msg::JointTrajectory>("trajectory_controller/joint_trajectory", 10);
 
+    impl_->joint_state_subscription_ = impl_->node_->create_subscription<sensor_msgs::msg::JointState>("/joint_states", 10, std::bind(&RobotHandle::Impl::jointStateCallback, impl_.get(), std::placeholders::_1));
+    // impl_->controller_state_subscription_ = impl_->node_->create_subscription<control_msgs::msg::JointTrajectoryControllerState>("/trajectory_controller/controller_state", 10, std::bind(&RobotHandle::Impl::controllerStateCallback, impl_.get(), std::placeholders::_1));
+    impl_->action_client_ = rclcpp_action::create_client<control_msgs::action::FollowJointTrajectory>(
+        this->impl_->node_,
+        "/trajectory_controller/follow_joint_trajectory" 
+    );
 }
 
 RobotHandle::~RobotHandle() = default;
@@ -110,10 +119,6 @@ RobotHandle::~RobotHandle() = default;
 
 const urdf::Model& RobotHandle::getURDFModel() const {
     return impl_->model_;
-}
-
-const std::shared_ptr<::urdf::ModelInterface>& RobotHandle::getURDFTree() const {
-    return impl_->urdf_tree_;
 }
 
 const KDL::Chain& RobotHandle::getKDLChain() const {
@@ -208,8 +213,20 @@ void RobotHandle::moveJointByAbsPosition(const JointsPosition& joint_position, d
 
 void RobotHandle::moveJointByAbsPosition(trajectory_msgs::msg::JointTrajectory &msg)
 {
+    if (!impl_->action_client_->wait_for_action_server(std::chrono::seconds(0))) {
+        RCLCPP_ERROR(impl_->node_->get_logger(), "Action server disconnected!");
+        return;
+    }
+    auto goal_msg = control_msgs::action::FollowJointTrajectory::Goal();
     msg.header.stamp = getTime();
-    impl_->move_command_sender_->publish(msg);
+    goal_msg.trajectory = msg;
+    auto send_goal_options = rclcpp_action::Client<control_msgs::action::FollowJointTrajectory>::SendGoalOptions();
+    send_goal_options.feedback_callback =
+        std::bind(&RobotHandle::Impl::feedbackCallback, impl_.get(), std::placeholders::_1, std::placeholders::_2);
+    send_goal_options.result_callback =
+        std::bind(&RobotHandle::Impl::resultCallback, impl_.get(), std::placeholders::_1);
+    auto future_goal_handle = impl_->action_client_->async_send_goal(goal_msg, send_goal_options);
+    impl_->is_running_ = true;
 }
 
 void RobotHandle::deleteToolFrame(const std::string& tool_name) {
@@ -235,17 +252,38 @@ const std::string& RobotHandle::getCurrentToolFrame() const {
 void RobotHandle::Impl::jointStateCallback(const sensor_msgs::msg::JointState &msg)
 {
     auto& data_base = DataBase::instance();
+    auto observer_ready = DynamicPlugin::instance().isReady();
     for(size_t i = 0; i < msg.name.size(); ++i) {
         current_joint_position_[msg.name[i]].joint_value = msg.position[i];
         data_base.appendData(DataTypeEnum::POSITION, msg.name[i], msg.position[i]);
         data_base.appendData(DataTypeEnum::VELOCITY, msg.name[i], msg.velocity[i]);
         data_base.appendData(DataTypeEnum::TORQUE, msg.name[i], msg.effort[i]);
     }
+    if(observer_ready) {
+        auto est_t = DynamicPlugin::instance().firstOrderMomentum(msg.position, msg.velocity, msg.effort);
+        for(size_t i = 0; i < msg.name.size(); ++i) {
+            data_base.appendData(DataTypeEnum::ESTIMATED_TORQUE, msg.name[i], est_t.first[i] + joint_torque_offset_[msg.name[i]].joint_value);
+            data_base.appendData(DataTypeEnum::ESTIMATED_CARTESIAN_TORQUE, msg.name[i], est_t.second[i]);
+        }
+    }
 }
 
 void RobotHandle::Impl::controllerStateCallback(const control_msgs::msg::JointTrajectoryControllerState &msg)
 {
-    controller_state_msg_ = msg;
+}
+
+void RobotHandle::Impl::feedbackCallback(rclcpp_action::ClientGoalHandle<control_msgs::action::FollowJointTrajectory>::SharedPtr, const std::shared_ptr<const control_msgs::action::FollowJointTrajectory::Feedback> feedback)
+{}
+
+void RobotHandle::Impl::resultCallback(const rclcpp_action::ClientGoalHandle<control_msgs::action::FollowJointTrajectory>::WrappedResult& result)
+{
+    controller_result_ = result;
+    if(result.code == rclcpp_action::ResultCode::SUCCEEDED) {
+        is_running_ = false;
+    }
+    else{
+        is_running_ = true;
+    }
 }
 
 //warpper function
@@ -302,3 +340,16 @@ void RobotHandle::getFrameName(std::string& res, const std::string& param_name, 
     }
 }
 
+void RobotHandle::setIsRunning(bool is_running)
+{
+    impl_->is_running_ = is_running;
+}
+
+const bool &RobotHandle::isRunning() const
+{
+    return impl_->is_running_;
+}
+
+void RobotHandle::setJointTorqueOffset(const std::string& joint_name, double v){
+    impl_->joint_torque_offset_[joint_name].joint_value = v;
+}

@@ -29,7 +29,6 @@ int main(int argc, char *argv[])
     KinematicsPlugin::init(kinematics_plugin_node);
     ControllerSwitcher::init(controller_switcher_node);
     PointPool::init();
-    DynamicPlugin::init();
 
     QApplication a(argc, argv);
     MainWindow w;

@@ -24,9 +24,11 @@ PlotWidget::PlotWidget(const DataTypeEnum& data_type, const size_t window_size, 
     series_->attachAxis(axis_x_);
     series_->attachAxis(axis_y_);
     chart_->setTitle(QString::fromStdString(joint_name_));
-    axis_x_->setFormat("ss.zz");
+    axis_x_->setFormat("ss.zzz");
+    axis_x_->setTickCount(3);
     axis_x_->setTitleText("sample time(seconds)");
     axis_y_->setTitleText("value");
+    axis_y_->setTickCount(3);
     chart_view_->setRenderHint(QPainter::Antialiasing);
 
     auto *layout = new QVBoxLayout(this);
@@ -35,7 +37,7 @@ PlotWidget::PlotWidget(const DataTypeEnum& data_type, const size_t window_size, 
     setLayout(layout);
 
     connect(timer_, &QTimer::timeout, this, &PlotWidget::pushData);
-    timer_->start(20); // 20 ms -> 50 Hz
+    timer_->start(50); // 50 ms -> 20 Hz
     elapsed_.start();
 }
 

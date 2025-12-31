@@ -27,6 +27,8 @@
   <depend>geometry_msgs</depend>
   <depend>magic_enum</depend>
   <depend>pinocchio</depend>
+  <depend>yaml-cpp</depend>
+  <depend>ament_index_cpp</depend>
 
   <exec_depend>ethercat_driver</exec_depend>
   <exec_depend>ethercat_interface</exec_depend>

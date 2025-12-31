@@ -1,11 +1,15 @@
 #include "dynamic_plugin.h"
-#include "robot_handle.h"
 #include "database.h"
 #include "functional.hpp"
 
 #include <urdf/model.h>
 #include <urdf_parser/urdf_parser.h>
 #include <pinocchio/algorithm/jacobian.hpp>
+#include <chrono>
+#include <iostream>
+#include <iomanip>
+#include <algorithm>
+#include <limits>
 
 
 using namespace pinocchio;
@@ -32,72 +36,142 @@ DynamicPlugin::DynamicPlugin()
         all_params_.conservativeResize(old_size + dyn_params.size(), 1);
         all_params_.block(old_size, 0, dyn_params.size(), 1) = dyn_params;
     }
-    auto n = model_.inertias.size() - 1;
-    K0_ = Eigen::MatrixXd::Identity(n, n) * 10;
+    nq_ = model_.inertias.size() - 1;
+    K0_ = Eigen::MatrixXd::Identity(nq_, nq_) * 10;
 
-}
-
-const Eigen::MatrixXd& DynamicPlugin::getBaseParams() {
-    static std::once_flag base_params_model_initialized_flag;
-    std::call_once(base_params_model_initialized_flag, [this](){
-        dep_res_ = dep_future_.get();
-        base_params_model_ = ((dep_res_.Pb.transpose() + dep_res_.Kd * dep_res_.Pd.transpose()) * all_params_).eval();
-    });
-
-    return base_params_model_;
 }
 
 void DynamicPlugin::identify(const size_t &db_start_index, const size_t &db_end_index)
 {
-    getBaseParams();
+    using clock = std::chrono::high_resolution_clock;
+    using ms = std::chrono::duration<double, std::milli>;
+
+    auto t_start = clock::now();
+
+    dependenceComputation();
     Eigen::MatrixXd q, v, a, t;
     auto n = RobotHandle::instance().getJointNums();
     auto db = DataBase::instance().getAllData();
-    for(const auto& name : RobotHandle::instance().getJointsName()) {
-        auto& joint = db.at(name);
+
+    // determine sample count (use minimum across joints to be safe)
+    size_t sample_count = std::numeric_limits<size_t>::max();
+    for (const auto &name : RobotHandle::instance().getJointsName()) {
+        auto &joint = db.at(name);
+        auto q_list = joint.at(DataTypeEnum::POSITION).getSnapShot(db_start_index, db_end_index - db_start_index);
+        sample_count = std::min(sample_count, (size_t)q_list.size());
+    }
+    if (sample_count == std::numeric_limits<size_t>::max() || sample_count == 0) {
+        RCLCPP_WARN(rclcpp::get_logger("DynamicPlugin"), "No samples available for identification");
+        return;
+    }
+
+    auto t_data_gather_start = clock::now();
+    // preallocate matrices: rows = joints, cols = samples
+    q = Eigen::MatrixXd(n, sample_count);
+    v = Eigen::MatrixXd(n, sample_count);
+    a = Eigen::MatrixXd(n, sample_count);
+    t = Eigen::MatrixXd(n, sample_count);
+
+    size_t row = 0;
+    for (const auto &name : RobotHandle::instance().getJointsName()) {
+        auto &joint = db.at(name);
         auto q_list = joint.at(DataTypeEnum::POSITION).getSnapShot(db_start_index, db_end_index);
         auto v_list = joint.at(DataTypeEnum::VELOCITY).getSnapShot(db_start_index, db_end_index);
         auto a_list = joint.at(DataTypeEnum::ACCELERATION).getSnapShot(db_start_index, db_end_index);
         auto t_list = joint.at(DataTypeEnum::TORQUE).getSnapShot(db_start_index, db_end_index);
-        auto length = q_list.size();
-        Eigen::VectorXd q_row(length), v_row(length), a_row(length), t_row(length);
-        for(size_t i = 0 ;i < q_list.size(); ++i) {
-            q_row(i) = q_list[i].y();
-            v_row(i) = v_list[i].y();
-            a_row(i) = a_list[i].y();
-            t_row(i) = t_list[i].y();
+        // fill row (truncate to sample_count if needed)
+        for (size_t i = 0; i < sample_count; ++i) {
+            q(row, i) = q_list[i].y();
+            v(row, i) = v_list[i].y();
+            a(row, i) = a_list[i].y();
+            t(row, i) = t_list[i].y();
         }
-        q.conservativeResize(q.rows() + 1, q_row.size());
-        q.row(q.rows() - 1) = q_row;
-        v.conservativeResize(v.rows() + 1, v_row.size());
-        v.row(v.rows() - 1) = v_row;
-        a.conservativeResize(a.rows() + 1, a_row.size());
-        a.row(a.rows() - 1) = a_row;
-        t.conservativeResize(t.rows() + 1, t_row.size());
-        t.row(t.rows() - 1) = t_row;
+        ++row;
     }
-    Eigen::MatrixXd tau_b(0,1);
-    for(size_t i = 0; i < t.cols(); ++i) {
-        auto old_size = tau_b.size();
-        tau_b.conservativeResize(old_size + t.col(i).size(), 1);
-        tau_b.block(old_size, 0, t.col(i).size(), 1) = t.col(i);
-    }
-    Eigen::MatrixXd Z(n * q.cols(),  dep_res_.Pb.cols());
-    Eigen::MatrixXd tau_rnea(n * q.cols(), 1);
-    Eigen::MatrixXd ext_tor(n * q.cols(), 1);
-    auto tau_for_observer_test = t;
-    for(size_t i = 0.4 * t.cols(); i < 0.6 * t.cols(); ++i) {
-        tau_for_observer_test.col(i).array() += 5;
-    }
-    for(size_t i = 0; i < q.cols(); ++i) {
-        auto H = pinocchio::computeJointTorqueRegressor(model_, data_, q.col(i), v.col(i), a.col(i));
+    auto t_data_gather_end = clock::now();
+    std::cout << "[DynamicPlugin::identify] Data gather: " << std::fixed << std::setprecision(2)
+              << ms(t_data_gather_end - t_data_gather_start).count() << " ms" << std::endl;
+
+    // Estimate dynamic base parameters and friction parameters together
+    Eigen::MatrixXd tau_b(n * sample_count, 1);
+    int dyn_cols = static_cast<int>(dep_res_.Pb.cols());
+    int friction_cols = 3 * static_cast<int>(n);
+    Eigen::MatrixXd Z_ext(n * sample_count, dyn_cols + friction_cols);
+
+    auto t_build_Zext_start = clock::now();
+    for (size_t i = 0; i < sample_count; ++i) {
+        tau_b.block(i * n, 0, n, 1) = t.col(i);
+        auto q_col = q.col(i);
+        auto v_col = v.col(i);
+        auto a_col = a.col(i);
+        auto H = pinocchio::computeJointTorqueRegressor(model_, data_, q_col, v_col, a_col);
         auto Hb = H * dep_res_.Pb;
-        Z.block(i * n, 0, n, Z.cols()) = Hb;
-        auto tau = pinocchio::rnea(model_, data_, q.col(i), v.col(i), a.col(i));
-        tau_rnea.block(i * n, 0, n, 1) = tau;
+        Z_ext.block(i * n, 0, n, dyn_cols) = Hb;
+        Eigen::MatrixXd friction_block = Eigen::MatrixXd::Zero(n, friction_cols);
+        fillFrictionRegressor(friction_block, v_col);
+        Z_ext.block(i * n, dyn_cols, n, friction_cols) = friction_block;
     }
-    base_params_ = ((Z.transpose() * Z).inverse() * Z.transpose() * tau_b).eval();
+    auto t_build_Zext_end = clock::now();
+    std::cout << "[DynamicPlugin::identify] Build Z_ext: " << std::fixed << std::setprecision(2)
+              << ms(t_build_Zext_end - t_build_Zext_start).count() << " ms" << std::endl;
+
+    auto t_qr_start = clock::now();
+    Eigen::ColPivHouseholderQR<Eigen::MatrixXd> qr(Z_ext);
+    Eigen::VectorXd param = qr.solve(tau_b);
+    auto t_qr_end = clock::now();
+    std::cout << "[DynamicPlugin::identify] QR solve: " << std::fixed << std::setprecision(2)
+              << ms(t_qr_end - t_qr_start).count() << " ms" << std::endl;
+
+    base_params_ = param.topRows(dyn_cols);
+    friction_params_ = param.bottomRows(friction_cols);
+    // mark ready
     is_ready_ = true;
+    auto t_end = clock::now();
+    std::cout << "[DynamicPlugin::identify] Total time: " << std::fixed << std::setprecision(2)
+              << ms(t_end - t_start).count() << " ms" << std::endl;
+}
+
+std::optional<JointsTorque> DynamicPlugin::rnea(const JointsPosition &q, const JointsVelocity &v, const JointsAcceleration &a)
+{
+    try {
+        JointsTorque res;
+        static const auto& joint_names = RobotHandle::instance().getJointsName();
+        static const auto& drag_params = RobotHandle::instance().getDragParams();
+        static const auto& external_force = RobotHandle::instance().getCurrentJointEstimatedExternalTorque();
+        Eigen::VectorXd eq(nq_), ev(nq_), ea(nq_), eef(nq_);
+
+        for(size_t i = 0; i < nq_; ++i) {
+            eq(i) = q.at(joint_names[i]).joint_value;
+            ev(i) = v.at(joint_names[i]).joint_value;
+            ea(i) = a.at(joint_names[i]).joint_value;
+            eef(i) = external_force.at(joint_names[i]).joint_value;
+        }
+        auto et = pinocchio::computeJointTorqueRegressor(model_, data_, eq, ev, ea);
+        et = (et * dep_res_.Pb * base_params_).eval();
+        auto t = (et +
+                  computeFrictionTorque(ev) +
+                  -drag_params.at(DragParamEnum::D).cwiseProduct(ev) +
+                  drag_params.at(DragParamEnum::M).cwiseProduct(eef)).eval();
+        for(size_t i = 0; i < nq_; ++i) {
+            res[joint_names[i]].joint_value = t(i);
+        }
+        return res;
+    }
+    catch(std::exception& e){
+        return std::nullopt;
+    }
+}
+
+std::optional<JointsTorque> DynamicPlugin::currentPoseStableTorque(const JointsPosition &q)
+{
+    static std::once_flag initialize_zero_flag;
+    static JointsAcceleration zero;
+    std::call_once(initialize_zero_flag, [&](){
+        for(const auto& n : RobotHandle::instance().getJointsName()) {
+            zero[n].joint_value = 0;
+        }
+    });
+    return DynamicPlugin::instance().rnea(RobotHandle::instance().getCurrentJointPosition(), zero, zero);
 }
 
 std::pair<std::vector<double>, std::vector<double>>  DynamicPlugin::firstOrderMomentum(const std::vector<double>& q, const std::vector<double>& v, const std::vector<double>& t)
@@ -116,7 +190,7 @@ std::pair<Eigen::VectorXd, Eigen::VectorXd> DynamicPlugin::firstOrderMomentum(
     const Eigen::VectorXd& v,
     const Eigen::VectorXd& t
     ) {
-    const static auto& peroid = RobotHandle::instance().getControllerUpdatePeriod() / 1e3;
+    const static auto& peroid = RobotHandle::instance().getControllerUpdatePeriod() / 1e9;
     model_.gravity.linear().setZero();
     const static auto zero = Eigen::VectorXd(q.size()).setZero();
     static auto r = zero;
@@ -126,7 +200,11 @@ std::pair<Eigen::VectorXd, Eigen::VectorXd> DynamicPlugin::firstOrderMomentum(
     auto C = (pinocchio::computeJointTorqueRegressor(model_, data_, q, v, zero) * dep_res_.Pb * base_params_).eval();
     model_.gravity.linear() = Eigen::Vector3d(0.0, 0.0, -9.81);
     auto G = (pinocchio::computeJointTorqueRegressor(model_, data_, q, zero, zero) * dep_res_.Pb * base_params_).eval();
-    auto inter = (t + C - G + r) * peroid;
+    // compute friction torque using estimated friction parameters (if available)
+    Eigen::VectorXd tau_f = Eigen::VectorXd::Zero(q.size());
+    tau_f = computeFrictionTorque(v);
+
+    auto inter = (t - tau_f + C - G + r) * peroid;
     sum += inter;
     r = K0_ * (Mv - sum - p0);
 
@@ -138,6 +216,71 @@ std::pair<Eigen::VectorXd, Eigen::VectorXd> DynamicPlugin::firstOrderMomentum(
 const bool &DynamicPlugin::isReady() const
 {
     return is_ready_;
+}
+
+const Eigen::MatrixXd& DynamicPlugin::dependenceComputation() {
+    static std::once_flag base_params_model_initialized_flag;
+    std::call_once(base_params_model_initialized_flag, [this](){
+        dep_res_ = dep_future_.get();
+        base_params_model_ = ((dep_res_.Pb.transpose() + dep_res_.Kd * dep_res_.Pd.transpose()) * all_params_).eval();
+    });
+
+    return base_params_model_;
+}
+
+const Eigen::MatrixXd &DynamicPlugin::getBaseParams()
+{
+    if(!is_ready_) {
+        std::cout << "No params available" << std::endl;
+        return Eigen::MatrixXd{};
+    }
+    return base_params_;
+}
+
+void DynamicPlugin::setParams(const Eigen::MatrixXd &base, const Eigen::MatrixXd &friction, const Eigen::MatrixXd &Pb, const Eigen::MatrixXd &Pd, const Eigen::MatrixXd &Kd)
+{
+    base_params_ = base;
+    friction_params_ = friction;
+    dep_res_.Pb = Pb;
+    dep_res_.Pd = Pd;
+    dep_res_.Kd = Kd;
+    is_ready_ = true;
+}
+
+const Eigen::MatrixXd &DynamicPlugin::getFrictionParams()
+{
+    if(!is_ready_) {
+        std::cout << "No params available" << std::endl;
+        return Eigen::MatrixXd{};
+    }
+    return friction_params_;
+}
+
+const Eigen::MatrixXd &DynamicPlugin::getDepPb()
+{
+    if(!is_ready_) {
+        std::cout << "No params available" << std::endl;
+        return Eigen::MatrixXd{};
+    }
+    return dep_res_.Pb;
+}
+
+const Eigen::MatrixXd &DynamicPlugin::getDepPd()
+{
+    if(!is_ready_) {
+        std::cout << "No params available" << std::endl;
+        return Eigen::MatrixXd{};
+    }
+    return dep_res_.Pd;
+}
+
+const Eigen::MatrixXd &DynamicPlugin::getDepKd()
+{
+    if(!is_ready_) {
+        std::cout << "No params available" << std::endl;
+        return Eigen::MatrixXd{};
+    }
+    return dep_res_.Kd;
 }
 
 Eigen::VectorXd DynamicPlugin::calculateExternalCartesianForce(const Eigen::VectorXd &q, const Eigen::VectorXd &joint_torques)
@@ -221,4 +364,34 @@ void DynamicPlugin::shuffleVector(Eigen::VectorXd& vec, const Eigen::VectorXd& u
     std::uniform_real_distribution<double> distrib(lower_limit(i), upper_limit(i));
     vec(i) = distrib(gen);
   }
+}
+
+static inline double signum(double x) {
+    if (x > 0.0) return 1.0;
+    if (x < 0.0) return -1.0;
+    return 0.0;
+}
+
+Eigen::VectorXd DynamicPlugin::computeFrictionTorque(const Eigen::VectorXd &v) {
+    Eigen::VectorXd tau_f = Eigen::VectorXd::Zero(nq_);
+    for (size_t j = 0; j < nq_; ++j) {
+        double vj = v(j);
+        double c = 0.0, kv = 0.0, b = 0.0;
+        c = friction_params_(3 * j + 0);
+        kv = friction_params_(3 * j + 1);
+        b = friction_params_(3 * j + 2);
+        tau_f(j) = c * signum(vj) + kv * vj + b;
+    }
+    return tau_f;
+}
+
+void DynamicPlugin::fillFrictionRegressor(Eigen::MatrixXd &block, const Eigen::VectorXd &v) {
+    int nj = static_cast<int>(v.size());
+    block.setZero();
+    for (int j = 0; j < nj; ++j) {
+        double vj = v(j);
+        block(j, 3*j) = signum(vj);
+        block(j, 3*j + 1) = vj;
+        block(j, 3*j + 2) = 1.0;
+    }
 }

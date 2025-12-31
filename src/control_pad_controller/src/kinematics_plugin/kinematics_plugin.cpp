@@ -1,5 +1,7 @@
 #include <chrono>
 #include "kinematics_plugin.h"
+#include "database.h"
+#include "dynamic_plugin.h"
 #include <Eigen/Dense>
 
 
@@ -34,12 +36,15 @@ KinematicsPlugin::KinematicsPlugin(const rclcpp::Node::SharedPtr& node)
     }
     resetSolver();
     current_pose_.header.frame_id = root_frame_id_;
-
-    cartesian_jog_timer_ = node_->create_wall_timer(milliseconds(RobotHandle::instance().getControllerUpdatePeriod()), std::bind(&KinematicsPlugin::cartesianJogCallback, this));
+    const auto& update_period = RobotHandle::instance().getControllerUpdatePeriod();
+    cartesian_jog_timer_ = node_->create_wall_timer(nanoseconds(update_period), std::bind(&KinematicsPlugin::cartesianJogCallback, this));
     cartesian_jog_timer_->cancel();
 
-    joint_jog_timer_ = node_->create_wall_timer(milliseconds(RobotHandle::instance().getControllerUpdatePeriod()), std::bind(&KinematicsPlugin::jointJogCallback, this));
+    joint_jog_timer_ = node_->create_wall_timer(nanoseconds(update_period), std::bind(&KinematicsPlugin::jointJogCallback, this));
     joint_jog_timer_->cancel();
+
+    drag_timer_ = node_->create_wall_timer(nanoseconds(update_period), std::bind(&KinematicsPlugin::dragCallback, this));
+    drag_timer_->cancel();
 
     twist_sub_ = node_->create_subscription<geometry_msgs::msg::TwistStamped>("control_pad_controller/remote_cartesian_jog", 10, std::bind(&KinematicsPlugin::remoteCartesianJogCallback, this, std::placeholders::_1));
     joint_sub_ = node_->create_subscription<control_msgs::msg::JointJog>("control_pad_controller/remote_joint_jog", 10, std::bind(&KinematicsPlugin::remoteJointJogCallback, this, std::placeholders::_1));
@@ -47,9 +52,18 @@ KinematicsPlugin::KinematicsPlugin(const rclcpp::Node::SharedPtr& node)
     pose_pub_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>("control_pad_controller/cartesian_pose", 10);
     worker_thread_ = std::thread([this]() {
         while (!stop_worker_) {
-            if (has_pending_cartesian_jog_task_ && has_pending_joint_jog_task_) {
+            if (
+                (has_pending_cartesian_jog_task_ && has_pending_joint_jog_task_) ||
+                (has_pending_drag_task_ && has_pending_cartesian_jog_task_) ||
+                (has_pending_drag_task_ && has_pending_joint_jog_task_)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                RCLCPP_WARN(node_->get_logger(), "Twist and jog at the same time is not allowed!");
+                has_pending_cartesian_jog_task_ = false;
+                has_pending_joint_jog_task_ = false;
+                has_pending_drag_task_ = false;
+                joint_jog_timer_->cancel();
+                cartesian_jog_timer_->cancel();
+                drag_timer_->cancel();
+                RCLCPP_WARN(node_->get_logger(), "Multiple movement command at the same time is not allowed!");
             }
             else if (has_pending_cartesian_jog_task_) {
                 std::lock_guard<std::mutex> lock(worker_mutex_);
@@ -60,6 +74,11 @@ KinematicsPlugin::KinematicsPlugin(const rclcpp::Node::SharedPtr& node)
                 std::lock_guard<std::mutex> lock(worker_mutex_);
                 has_pending_joint_jog_task_ = false;
                 this->processJointJog(); 
+            }
+            else if(has_pending_drag_task_) {
+                std::lock_guard<std::mutex> lock(worker_mutex_);
+                has_pending_drag_task_ = false;
+                this->processDrag();
             }
             else {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -197,6 +216,11 @@ void KinematicsPlugin::jointJogCallback()
     has_pending_joint_jog_task_ = true;
 }
 
+void KinematicsPlugin::dragCallback()
+{
+    has_pending_drag_task_ = true;
+}
+
 void KinematicsPlugin::processCartesianJog()
 {
     auto current_time = RobotHandle::instance().getTime();
@@ -284,6 +308,29 @@ void KinematicsPlugin::processJointJog()
         joint_jog_timer_->cancel();
     }
     RobotHandle::instance().moveJointByAbsPosition(position_to_send, velo_ratio_);
+
+}
+
+void KinematicsPlugin::processDrag()
+{
+    static std::once_flag initialize_zero_acc_flag;
+    static JointsAcceleration zero_acc;
+    std::call_once(initialize_zero_acc_flag, [&](){
+        for(const auto& n : RobotHandle::instance().getJointsName()) {
+            zero_acc[n].joint_value = 0;
+        }
+    });
+    auto res = DynamicPlugin::instance().rnea(RobotHandle::instance().getCurrentJointPosition(),
+                                              RobotHandle::instance().getCurrentJointVelocity(),
+                                              zero_acc);
+
+    if(res.has_value()) {
+        RobotHandle::instance().setJointTorque(res.value());
+    }
+    else {
+        RCLCPP_WARN(node_->get_logger(), "Error while dragging! Stop dragging");
+        this->stopDragging();
+    }
 
 }
 
@@ -421,4 +468,23 @@ geometry_msgs::msg::Pose KinematicsPlugin::kdlFrame2Pose(KDL::Frame frame)
     frame.M.GetQuaternion(res.orientation.x, res.orientation.y, res.orientation.z, res.orientation.w);
     
     return res;
+}
+
+void KinematicsPlugin::startDragging()
+{
+    RobotHandle::instance().switchToCST();
+    has_pending_drag_task_ = true;
+    drag_timer_->reset();
+}
+
+void KinematicsPlugin::stopDragging()
+{
+    RobotHandle::instance().switchToCSP();
+    has_pending_drag_task_ = false;
+    drag_timer_->cancel();
+}
+
+bool KinematicsPlugin::isDragging()
+{
+    return !drag_timer_->is_canceled();
 }

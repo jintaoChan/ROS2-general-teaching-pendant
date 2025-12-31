@@ -1,9 +1,7 @@
 #include <QApplication>
 #include <main_window.h>
 #include <rclcpp/rclcpp.hpp>
-#include "database.h"
 #include "robot_handle.h"
-#include "controller_switcher.h"
 #include "kinematics_plugin.h"
 #include "dynamic_plugin.h"
 #include "point_pool.h"
@@ -23,11 +21,10 @@ int main(int argc, char *argv[])
     rclcpp::executors::MultiThreadedExecutor main_exec;
     main_exec.add_node(robot_handle_node);
     main_exec.add_node(kinematics_plugin_node);
-    main_exec.add_node(controller_switcher_node);
     std::thread main_exec_thread([&] { main_exec.spin(); });
+    // ControllerSwitcher::init(controller_switcher_node); // it spin itself
     RobotHandle::init(robot_handle_node);
     KinematicsPlugin::init(kinematics_plugin_node);
-    ControllerSwitcher::init(controller_switcher_node);
     PointPool::init();
 
     QApplication a(argc, argv);
@@ -38,7 +35,6 @@ int main(int argc, char *argv[])
     rclcpp::shutdown();
     RobotHandle::destroy();
     KinematicsPlugin::destroy();
-    ControllerSwitcher::destroy();
     main_exec_thread.join();
     return 0;
 }

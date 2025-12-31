@@ -1,0 +1,78 @@
+# RViz configuration file
+# ----------------------------------------------------------------
+
+Visualization Manager:
+  Class: ""
+  Displays:
+    # --- 1. Grid Display ---
+    - Alpha: 0.5
+      Cell Size: 1
+      Class: rviz_default_plugins/Grid
+      Color: 160; 160; 164
+      Enabled: true
+      Line Style:
+        Line Width: 0.029999999329447746
+        Value: Lines
+      Name: Grid
+      Plane: XY
+      Plane Cell Count: 10
+      Reference Frame: <Fixed Frame>
+      Value: true
+      
+    # --- 2. Robot Model Display ---
+    # plugins to show robot model
+    - Class: rviz_default_plugins/RobotModel
+      Alpha: 0.5
+      Description Topic:
+        # subscribe URDF published by  robot_state_publisher
+        Value: /robot_description
+      Enabled: true
+      Name: RobotModel
+      TF Prefix: ""
+      # ensure visual model rendering is enabled
+      Visual Enabled: true
+      
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    # **Important:** Ensure that this Fixed Frame is a coordinate system published in your robot's URDF.
+    # Try 'world', and if that fails, use your robot's base name (e.g., 'base_link').
+    Fixed Frame: world 
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+  Transformation:
+    Current:
+      Class: rviz_default_plugins/TF
+  Value: true
+  
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 3.0 # distance of camera
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Name: Current View
+      Pitch: 0.5 # 
+      Target Frame: <Fixed Frame>
+      Yaw: 0.5
+
+# ----------------------------------------------------------------
+#The following is window layout information, which does not affect display functionality and can be adjusted as needed.
+Window Geometry:
+  Height: 800
+  Width: 1000
+  X: 50
+  Y: 50
+  Hide Left Dock: false
+  Hide Right Dock: false
+  Displays:
+    collapsed: false
+  Views:
+    collapsed: false
+  Help:
+    collapsed: false

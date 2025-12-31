@@ -15,10 +15,8 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
   controller_interface
   pluginlib
   rclcpp
-  moveit_core
-  moveit_ros_planning
-  moveit_ros_planning_interface
   rclcpp_lifecycle
+  kdl_parser
   controller_manager
   controller_manager_msgs
   std_msgs
@@ -30,13 +28,14 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
   geometry_msgs
   magic_enum
   pinocchio
+  yaml-cpp
+  ament_index_cpp
 )
 
 
 foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
   find_package(${Dependency} REQUIRED)
 endforeach()
-find_package(pinocchio REQUIRED)
 find_package(Qt6 COMPONENTS Widgets Charts REQUIRED)
 
 
@@ -45,8 +44,6 @@ add_library(${PROJECT_NAME}
   SHARED
   ${CMAKE_CURRENT_SOURCE_DIR}/src/robot_handle/robot_handle.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/database/database.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/control_pad_controller.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/move_executor/move_executor.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/controller_switcher/controller_switcher.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/kinematics_plugin/kinematics_plugin.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/dynamic_plugin/dynamic_plugin.cpp
@@ -55,9 +52,8 @@ add_library(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/move_executor>
-  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/controller_switcher>
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/kinematics_plugin>
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/controller_switcher>
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/dynamic_plugin>
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/robot_handle>
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/database>
@@ -70,10 +66,9 @@ target_link_libraries(${PROJECT_NAME}
   magic_enum::magic_enum
   Qt6::Widgets
   Qt6::Charts
+  yaml-cpp::yaml-cpp
+  ament_index_cpp::ament_index_cpp
 )
-
-# Export hardware plugins
-pluginlib_export_plugin_description_file(controller_interface control_pad.xml)
 
 install(TARGETS ${PROJECT_NAME}
   EXPORT export_${PROJECT_NAME}

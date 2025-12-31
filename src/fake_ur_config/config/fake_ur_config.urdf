@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="fake_ur" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="fake_ur">
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="-1.32903356359508E-12 -5.95336903906293E-12 0.0338776670857649"
+        rpy="0 0 0" />
+      <mass
+        value="1.44940327015999" />
+      <inertia
+        ixx="0.00492881883825976"
+        ixy="8.32451425175137E-10"
+        ixz="-2.25385858188084E-13"
+        iyy="0.00492878171505367"
+        iyz="-2.84223274357211E-13"
+        izz="0.00951858321864677" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fake_ur_config/meshes/base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <!-- <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fake_ur_config/meshes/base_link.STL" />
+      </geometry>
+    </collision> -->
+  </link>
+  <link
+    name="link0">
+    <inertial>
+      <origin
+        xyz="0.03008 -0.00078887 -0.15015"
+        rpy="0 0 0" />
+      <mass
+        value="0.55122" />
+      <inertia
+        ixx="0.0014776"
+        ixy="-1.0447E-05"
+        ixz="2.7138E-05"
+        iyy="0.0014029"
+        iyz="-2.7658E-06"
+        izz="0.0016816" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fake_ur_config/meshes/link0.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <!-- <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fake_ur_config/meshes/link0.STL" />
+      </geometry>
+    </collision> -->
+  </link>
+  <joint
+    name="joint0"
+    type="revolute">
+    <origin
+      xyz="0 0 0"
+      rpy="-3.1416 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="link0" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="${-2*pi}"
+      upper="${2*pi}"
+      effort="1000"
+      velocity="${pi/4}" />
+  </joint>
+  <link
+    name="link1">
+    <inertial>
+      <origin
+        xyz="-0.20372 1.2374E-05 0.062279"
+        rpy="0 0 0" />
+      <mass
+        value="1.3035" />
+      <inertia
+        ixx="0.0030298"
+        ixy="5.2435E-06"
+        ixz="-1.254E-05"
+        iyy="0.0069434"
+        iyz="1.5844E-06"
+        izz="0.0073271" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fake_ur_config/meshes/link1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <!-- <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fake_ur_config/meshes/link1.STL" />
+      </geometry>
+    </collision> -->
+  </link>
+  <joint
+    name="joint1"
+    type="revolute">
+    <origin
+      xyz="0.222 0 -0.1458"
+      rpy="0 -1.5708 0" />
+    <parent
+      link="link0" />
+    <child
+      link="link1" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="${-pi}"
+      upper="${pi}"
+      effort="1000"
+      velocity="${pi/4}" />
+  </joint>
+  <link
+    name="link2">
+    <inertial>
+      <origin
+        xyz="-0.131 0.00035541 0.19747"
+        rpy="0 0 0" />
+      <mass
+        value="1.1247" />
+      <inertia
+        ixx="0.0018925"
+        ixy="4.5428E-06"
+        ixz="0.00014485"
+        iyy="0.0036587"
+        iyz="-2.8498E-06"
+        izz="0.003735" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fake_ur_config/meshes/link2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <!-- <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fake_ur_config/meshes/link2.STL" />
+      </geometry>
+    </collision> -->
+  </link>
+  <joint
+    name="joint2"
+    type="revolute">
+    <origin
+      xyz="-0.425 0 -0.001"
+      rpy="0 0 0" />
+    <parent
+      link="link1" />
+    <child
+      link="link2" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="${-pi}"
+      upper="${pi}"
+      effort="1000"
+      velocity="${pi/4}" />
+  </joint>
+  <link
+    name="link3">
+    <inertial>
+      <origin
+        xyz="0.0043197 0.001231 0.05645"
+        rpy="0 0 0" />
+      <mass
+        value="0.32299" />
+      <inertia
+        ixx="0.00061621"
+        ixy="-3.1008E-06"
+        ixz="1.9191E-05"
+        iyy="0.00058589"
+        iyz="-4.5458E-06"
+        izz="0.00059346" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fake_ur_config/meshes/link3.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <!-- <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fake_ur_config/meshes/link3.STL" />
+      </geometry>
+    </collision> -->
+  </link>
+  <joint
+    name="joint3"
+    type="revolute">
+    <origin
+      xyz="-0.392 0 0.15325"
+      rpy="-3.1416 0 0" />
+    <parent
+      link="link2" />
+    <child
+      link="link3" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="${-pi}"
+      upper="${pi}"
+      effort="1000"
+      velocity="${pi/4}" />
+  </joint>
+  <link
+    name="link4">
+    <inertial>
+      <origin
+        xyz="0.0043201 0.0012307 0.056451"
+        rpy="0 0 0" />
+      <mass
+        value="0.32298" />
+      <inertia
+        ixx="0.00061621"
+        ixy="-3.1003E-06"
+        ixz="1.919E-05"
+        iyy="0.00058589"
+        iyz="-4.5457E-06"
+        izz="0.00059346" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fake_ur_config/meshes/link4.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <!-- <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fake_ur_config/meshes/link4.STL" />
+      </geometry>
+    </collision> -->
+  </link>
+  <joint
+    name="joint4"
+    type="revolute">
+    <origin
+      xyz="-0.05865 0 0.0815"
+      rpy="1.5932 1.5708 -1.5484" />
+    <parent
+      link="link3" />
+    <child
+      link="link4" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="${-pi}"
+      upper="${pi}"
+      effort="1000"
+      velocity="${pi/4}" />
+  </joint>
+  <link
+    name="link5">
+    <inertial>
+      <origin
+        xyz="-1.0356E-09 1.7E-15 -0.022858"
+        rpy="0 0 0" />
+      <mass
+        value="0.021201" />
+      <inertia
+        ixx="1.4705E-05"
+        ixy="2.6737E-19"
+        ixz="-2.7185E-13"
+        iyy="1.4705E-05"
+        iyz="-1.4643E-18"
+        izz="8.7048E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fake_ur_config/meshes/link5.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <!-- <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fake_ur_config/meshes/link5.STL" />
+      </geometry>
+    </collision> -->
+  </link>
+  <joint
+    name="joint5"
+    type="revolute">
+    <origin
+      xyz="-0.06345 0 0.0815"
+      rpy="3.1416 1.5708 0" />
+    <parent
+      link="link4" />
+    <child
+      link="link5" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="${-pi}"
+      upper="${pi}"
+      effort="1000"
+      velocity="${pi/4}" />
+  </joint>
+  <link name="world"/>
+  <joint name="base_joint" type="fixed">
+    <parent link="world"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  </xacro:macro>
+  <gazebo>
+    <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>$(find fake_ur_config)/config/ros2_controllers.yaml</parameters>
+    </plugin>
+  </gazebo>
+  <xacro:fake_ur/>
+</robot>

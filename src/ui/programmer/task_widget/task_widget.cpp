@@ -1,7 +1,6 @@
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QtConcurrent/QtConcurrent>
-#include "move_executor.h"
 #include "group_info_dialog.h"
 #include "task_widget.h"
 #include "ui_task_widget.h"
@@ -104,7 +103,7 @@ void TaskWidget::on_execute_button_clicked()
         }
         task.push_back({name, points});
     }
-    QtConcurrent::run(&MoveExecutor::ExecuteTask, task, setting_panel_->getVelocity());
+    // QtConcurrent::run(&MoveExecutor::ExecuteTask, task, setting_panel_->getVelocity());
 }
 
 
@@ -117,6 +116,6 @@ void TaskWidget::on_delete_task_button_clicked()
 
 void TaskWidget::on_stop_button_clicked()
 {
-    QtConcurrent::run(&MoveExecutor::StopMoving);
+
 }
 

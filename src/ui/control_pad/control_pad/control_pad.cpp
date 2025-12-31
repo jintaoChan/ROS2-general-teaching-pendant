@@ -6,7 +6,6 @@
 #include "ui_control_pad.h"
 #include "joint_group_widget.h"
 #include "robot_handle.h"
-#include "move_executor.h"
 #include "setting_panel.h"
 #include "kinematics_plugin.h"
 #include "tf2/LinearMath/Quaternion.h"
@@ -49,7 +48,7 @@ ControlPad::ControlPad(SettingPanel* setting_panel, QWidget *parent)
 
     timer_ = new QTimer(this);
     connect(timer_, &QTimer::timeout, this, &ControlPad::regularUpdate);
-    timer_->start(RobotHandle::instance().getControllerUpdatePeriod());
+    timer_->start(RobotHandle::instance().getControllerUpdatePeriod() / 1e6);
 }
 
 void ControlPad::MoveCommander(MoveButtonType type, MoveButtonEvent event, const std::string &joint_name) const {
@@ -92,7 +91,6 @@ void ControlPad::MoveCommander(MoveButtonType type, MoveButtonEvent event, const
 }
 
 void ControlPad::MoveCommander(MoveButtonType type, MoveButtonEvent event, size_t idx) {
-    // ControllerSwitcher::instance().switchToControlPad();
     std::array<double, 6> arr{0,0,0,0,0,0};
     switch(type){
     case MoveButtonType::BACKWARD_VELOCITY: {

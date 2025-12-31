@@ -8,15 +8,15 @@ SimulateExternalForceBar::SimulateExternalForceBar(const QString& joint_name, QW
     joint_name_{joint_name},
     joint_name_label_{new QLabel(this)},
     slider_{new QSlider(Qt::Horizontal, this)},
-    editor_{new QLineEdit(this)}
+    torque_editor_{new QLineEdit(this)}
 {
     joint_name_label_->setText(joint_name_);
     slider_->setRange(-20,20);
-    editor_->setText(QString::number(0));
-    editor_->setReadOnly(true);
+    torque_editor_->setText(QString::number(0));
+    torque_editor_->setReadOnly(true);
     layout_->addWidget(joint_name_label_);
     layout_->addWidget(slider_);
-    layout_->addWidget(editor_);
+    layout_->addWidget(torque_editor_);
     setLayout(layout_);
     connect(slider_, &QSlider::valueChanged, this, &SimulateExternalForceBar::whenSliderMoved);
 }
@@ -24,6 +24,6 @@ SimulateExternalForceBar::SimulateExternalForceBar(const QString& joint_name, QW
 void SimulateExternalForceBar::whenSliderMoved(int position)
 {
     RobotHandle::instance().setJointTorqueOffset(joint_name_.toStdString(), position);
-    editor_->setText(QString::number(position));
+    torque_editor_->setText(QString::number(position));
 
 }

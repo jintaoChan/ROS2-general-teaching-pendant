@@ -23,7 +23,7 @@ private:
     QString joint_name_;
     QLabel* joint_name_label_;
     QSlider* slider_;
-    QLineEdit* editor_;
+    QLineEdit* torque_editor_;
 
 };
 

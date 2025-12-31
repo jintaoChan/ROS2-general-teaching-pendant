@@ -26,7 +26,7 @@ MainWindow::MainWindow(QWidget *parent)
     tab_widget->addTab(control_pad, "Move");
     TaskWidget* task_widget = new TaskWidget(setting_pannel, ui->centralwidget);
     tab_widget->addTab(task_widget, "Task");
-    SettingPage* setting_page = new SettingPage(ui->centralwidget);
+    SettingPage* setting_page = new SettingPage(setting_pannel, ui->centralwidget);
     tab_widget->addTab(setting_page, "Setting");
     PlotPage* plot_page = new PlotPage(10000, ui->centralwidget);
     tab_widget->addTab(plot_page, "Plot");

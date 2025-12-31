@@ -15,6 +15,7 @@
   <depend>trac_ik</depend>
   <depend>control_pad_controller</depend>
   <depend>pinocchio</depend>
+  <depend>yaml-cpp</depend>
 
 
   <exec_depend>ethercat_driver</exec_depend>

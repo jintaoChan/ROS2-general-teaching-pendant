@@ -20,7 +20,7 @@ enum class DataTypeEnum : char {
 class DataType {
 
 public:
-    DataType(const size_t& buffer_size);
+    DataType(const size_t& buffer_size, const uint64_t& update_period);
     ~DataType();
     DataType(const DataType& other);
     DataType& operator=(const DataType& other);

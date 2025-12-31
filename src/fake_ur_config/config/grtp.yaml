@@ -1,0 +1,35 @@
+# this file is used for general robot tool pendant
+
+
+database_buffer_size: 600000
+
+coordinate_system:
+  base_frame: base_link
+  # tool_frame: 
+  end_effector_frame: link5
+
+cartesian_limits:
+  max_trans_vel: 0.05
+  max_trans_acc: 0.02
+  max_trans_dec: 0.05
+  max_rot_vel: 1.0
+
+drag_params:
+  joint0:
+    D: 2
+    M: 0
+  joint1:
+    D: 2
+    M: 0
+  joint2:
+    D: 2
+    M: 0
+  joint3:
+    D: 2
+    M: 0
+  joint4:
+    D: 2
+    M: 0
+  joint5:
+    D: 2
+    M: 0

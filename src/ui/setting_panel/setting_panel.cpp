@@ -23,7 +23,7 @@ SettingPanel::SettingPanel(QWidget *parent)
     }
     QObject::connect(ui_->coordinate_selection_combobox, &QComboBox::currentTextChanged, [this](const auto& text) {
         auto coord_type = magic_enum::enum_cast<ControlCoordinateSystemType>(text.toStdString()).value();
-        if (!RobotHandle::instance().isToolFrameSet()) {
+        if (coord_type == ControlCoordinateSystemType::Tool && !RobotHandle::instance().isToolFrameSet()) {
             QMessageBox::warning(this, "Warning", "Tool is not set yet!");
             QSignalBlocker blocker(ui_->coordinate_selection_combobox);
             ui_->coordinate_selection_combobox->setCurrentIndex(previous_coordinate_index_);
@@ -37,10 +37,10 @@ SettingPanel::SettingPanel(QWidget *parent)
     previous_coordinate_index_ = ui_->coordinate_selection_combobox->currentIndex();
     ui_->horizontalSlider_velocity->setMaximum(100);
     ui_->horizontalSlider_velocity->setMinimum(0);
-    ui_->label_horizontalSlider_velocity->setFixedWidth(50);
     QObject::connect(ui_->horizontalSlider_velocity, &QSlider::valueChanged, [&](int value){ ui_->label_horizontalSlider_velocity->setText(QString::number(value) + QString(" %")); });
     ui_->horizontalSlider_velocity->setValue(1);
     ui_->horizontalSlider_velocity->setValue(0);
+    ui_->drag_button->setEnabled(false);
 
     timer_ = new QTimer(this);
     connect(timer_, &QTimer::timeout, this, &SettingPanel::regularUpdate);
@@ -90,6 +90,34 @@ void SettingPanel::regularUpdate()
         )";
     }
     ui_->running_state_label->setStyleSheet(styleSheet);
+
+    const auto& is_enable = RobotHandle::instance().isDriverEnable();
+    if(is_enable) {
+        ui_->motor_driver_enable_button->setText("Disable");
+    }
+    else{
+        ui_->motor_driver_enable_button->setText("Enable");
+    }
+    const auto& is_error = RobotHandle::instance().isDriverError();
+    if(is_error) {
+        ui_->clear_fault_button->setEnabled(true);
+    }
+    else{
+        ui_->clear_fault_button->setEnabled(false);
+    }
+    const auto& is_dragging = KinematicsPlugin::instance().isDragging();
+    if(is_dragging) {
+        ui_->drag_button->setChecked(true);
+    }
+    else{
+        ui_->drag_button->setChecked(false);
+    }
+}
+
+void SettingPanel::activateDrag()
+{
+    ui_->drag_button->setEnabled(true);
+    ui_->drag_button->setCheckable(true);
 }
 
 
@@ -97,5 +125,32 @@ void SettingPanel::on_coordinate_selection_combobox_currentIndexChanged(int)
 {
     auto text = ui_->coordinate_selection_combobox->currentText();
     control_coordinate_system_type_ = magic_enum::enum_cast<ControlCoordinateSystemType>(text.toStdString()).value();
+}
+
+void SettingPanel::on_drag_button_toggled(bool checked)
+{
+    if(checked) {
+        KinematicsPlugin::instance().startDragging();
+    }
+    else{
+        KinematicsPlugin::instance().stopDragging();
+    }
+}
+
+void SettingPanel::on_clear_fault_button_clicked()
+{
+    RobotHandle::instance().clearFault();
+}
+
+
+void SettingPanel::on_motor_driver_enable_button_clicked()
+{
+    const auto& is_enable = RobotHandle::instance().isDriverEnable();
+    if(is_enable) {
+        RobotHandle::instance().disableMotorDrive();
+    }
+    else{
+        RobotHandle::instance().enableMotorDrive();
+    }
 }
 

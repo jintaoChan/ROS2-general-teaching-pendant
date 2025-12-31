@@ -25,6 +25,10 @@ public:
     void moveJointPositionRelatively(const JointsPosition& pos, double velo_ratio);
     void moveJointPositionAbsolutely(const JointsPosition& pos, double velo_ratio);
     void stop();
+    void startDragging();
+    void stopDragging();
+    bool isDragging();
+
 
     geometry_msgs::msg::PoseStamped getCurrentCartesianPose();
     void selectCoordinateSystem(const ControlCoordinateSystemType& coord_sys);
@@ -35,8 +39,10 @@ public:
 private:
     void cartesianJogCallback();
     void jointJogCallback();
+    void dragCallback();
     void processCartesianJog();
     void processJointJog();
+    void processDrag();
 
     void remoteCartesianJogCallback(const geometry_msgs::msg::TwistStamped& msg);
     void remoteJointJogCallback(const control_msgs::msg::JointJog& msg);
@@ -68,6 +74,7 @@ private:
     std::mutex worker_mutex_;
     std::atomic<bool> has_pending_cartesian_jog_task_{false};
     std::atomic<bool> has_pending_joint_jog_task_{false};
+    std::atomic<bool> has_pending_drag_task_{false};
     std::thread worker_thread_;
     bool stop_worker_{false};
     rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr twist_sub_;
@@ -82,6 +89,7 @@ private:
     sensor_msgs::msg::JointState stored_joint_position_;
     rclcpp::TimerBase::SharedPtr cartesian_jog_timer_;
     rclcpp::TimerBase::SharedPtr joint_jog_timer_;
+    rclcpp::TimerBase::SharedPtr drag_timer_;
     geometry_msgs::msg::Twist twist_msg_;
     sensor_msgs::msg::JointState target_joint_position_;
 };

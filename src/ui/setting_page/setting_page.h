@@ -7,16 +7,19 @@
 #include <QGridLayout>
 #include <QWidget>
 
+#include "setting_panel.h"
+
 class SettingPage : public QWidget
 {
     Q_OBJECT
 public:
-    explicit SettingPage(QWidget *parent = nullptr);
+    explicit SettingPage(SettingPanel* setting_panel, QWidget *parent = nullptr);
 
 signals:
 
 
 private:
+    SettingPanel* setting_panel_;
     QGridLayout* layout;
     QStackedWidget *stacked_widget;
     QListWidget* list_widget;

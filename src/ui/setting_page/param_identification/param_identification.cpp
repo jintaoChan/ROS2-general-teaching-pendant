@@ -1,19 +1,26 @@
+#include "param_identification.h"
 #include <QApplication>
 #include <QInputDialog>
 #include <QMessageBox>
 #include <fstream>
 #include <sstream>
 #include <QClipboard>
+#include <QProgressDialog>
+#include <QPointer>
+#include <thread>
+#include <chrono>
+#include <cereal/archives/json.hpp>
+
 #include "robot_handle.h"
 #include "database.h"
 #include "dynamic_plugin.h"
-#include "param_identification.h"
 #include "robot_handle.h"
 
 ParamIdentification::ParamIdentification(QWidget *parent)
     :
     QWidget(parent),
     copy_info_button_(new QPushButton(this)),
+    load_param_button_(new QPushButton(this)),
     identify_button_(new QPushButton(this)),
     base_param_size_title_(new QLabel(this)),
     base_param_size_(new QLabel(this)),
@@ -23,7 +30,8 @@ ParamIdentification::ParamIdentification(QWidget *parent)
     base_param_size_title_->setText("Base param size: ");
     base_param_size_layout_->addWidget(base_param_size_title_);
     base_param_size_layout_->addWidget(base_param_size_);
-    copy_info_button_->setText("Copy base param to clip board");
+    copy_info_button_->setText("Save param to file");
+    load_param_button_->setText("Load param from file");
     identify_button_->setText("Start identify by a trajectory");
     layout_->addLayout(base_param_size_layout_);
     for(const auto& n : RobotHandle::instance().getJointsName()) {
@@ -32,9 +40,11 @@ ParamIdentification::ParamIdentification(QWidget *parent)
         layout_->addWidget(sefb);
     }
     layout_->addWidget(copy_info_button_);
+    layout_->addWidget(load_param_button_);
     layout_->addWidget(identify_button_);
     setLayout(layout_);
-    connect(copy_info_button_, &QPushButton::pressed, this, &ParamIdentification::copyInfoClicked);
+    connect(copy_info_button_, &QPushButton::pressed, this, &ParamIdentification::saveInfoClicked);
+    connect(load_param_button_, &QPushButton::pressed, this, &ParamIdentification::loadParamClicked);
     connect(identify_button_, &QPushButton::pressed, this, &ParamIdentification::identifyClicked);
 
 }
@@ -69,7 +79,7 @@ std::optional<trajectory_msgs::msg::JointTrajectory> ParamIdentification::loadTr
         }
         if(index > 1) {
             for(size_t i = 0;i < p.positions.size(); ++i) {
-                p.velocities.push_back((p.positions[i] - last_p.positions[i]) / (period / 1e3));
+                p.velocities.push_back((p.positions[i] - last_p.positions[i]) / (period / 1e9));
             }
         }
         else{
@@ -77,8 +87,8 @@ std::optional<trajectory_msgs::msg::JointTrajectory> ParamIdentification::loadTr
                 p.velocities.push_back(0);
             }
         }
-        p.time_from_start.sec = period * index / 1e3;
-        p.time_from_start.nanosec = (uint32_t(period * index) % 1000) * 1e6;
+        p.time_from_start.sec = period * index / 1e9;
+        p.time_from_start.nanosec = (period * index) % 1000000000;
         ++index;
 
         traj.points.push_back(p);
@@ -91,9 +101,53 @@ std::optional<trajectory_msgs::msg::JointTrajectory> ParamIdentification::loadTr
     return traj;
 }
 
-void ParamIdentification::copyInfoClicked()
+void ParamIdentification::saveInfoClicked()
 {
-    std::cout << DynamicPlugin::instance().getBaseParams() << std::endl;
+    bool ok;
+    auto path = QInputDialog::getText(this, tr("Save base param file"),
+                                      tr("Please input the path"), QLineEdit::Normal,
+                                      "", &ok);
+    if(ok){
+        std::ofstream file(path.toStdString(), std::ios::out | std::ios::trunc);
+        std::vector<double> param_vec;
+        if (!file) {
+            QMessageBox::warning(this, "Warning", "Cannot open file: " + path);
+            return;
+        }
+        cereal::JSONOutputArchive ar_out(file);
+        const auto& base = DynamicPlugin::instance().getBaseParams();
+        const auto& friction = DynamicPlugin::instance().getFrictionParams();
+        const auto& Pb = DynamicPlugin::instance().getDepPb();
+        const auto& Pd = DynamicPlugin::instance().getDepPd();
+        const auto& Kd = DynamicPlugin::instance().getDepKd();
+        ar_out(CEREAL_NVP(base), CEREAL_NVP(friction), CEREAL_NVP(Pb), CEREAL_NVP(Pd), CEREAL_NVP(Kd));
+    }
+}
+
+void ParamIdentification::loadParamClicked()
+{
+    bool ok;
+    auto path = QInputDialog::getText(this, tr("Base param file"),
+                                      tr("Please input the path"), QLineEdit::Normal,
+                                      "", &ok);
+    if(ok){
+        std::ifstream file(path.toStdString(), std::ios::in);
+        std::string line;
+        if (!file) {
+            QMessageBox::warning(this, "Warning", "Cannot open file: " + path);
+            return;
+        }
+        cereal::JSONInputArchive ar_in(file);
+        Eigen::MatrixXd base, friction, Pb, Pd, Kd;
+        ar_in(CEREAL_NVP(base), CEREAL_NVP(friction), CEREAL_NVP(Pb), CEREAL_NVP(Pd), CEREAL_NVP(Kd));
+        DynamicPlugin::instance().setParams(base, friction, Pb, Pd, Kd);
+        if(DynamicPlugin::instance().isReady()) {
+            emit(identifyFinished());
+        }
+        else {
+            QMessageBox::warning(this, "Warning", "Invalid param file!");
+        }
+    }
 }
 
 void ParamIdentification::identifyClicked()
@@ -105,15 +159,48 @@ void ParamIdentification::identifyClicked()
     if(ok){
         auto traj_opt = loadTrajFile(path);
         if(traj_opt.has_value()) {
-            auto sample_start_index = DataBase::instance().getCurrentIndex();
-            decltype(sample_start_index) sample_end_index;
-            RobotHandle::instance().moveJointByAbsPosition(traj_opt.value());
-            while(RobotHandle::instance().isRunning()){
-            }
-            sample_end_index = DataBase::instance().getCurrentIndex();
-            DynamicPlugin::instance().identify(sample_start_index, sample_end_index);
+            // run the heavy identification in a worker thread while showing a
+            // modal progress dialog that prevents interaction with the main window
+            QPointer<QProgressDialog> progress = new QProgressDialog("Identification in progress...", QString(), 0, 0, this);
+            progress->setWindowModality(Qt::ApplicationModal);
+            progress->setCancelButton(nullptr);
+            progress->setWindowTitle(tr("Please wait"));
+            progress->setMinimumDuration(0);
+            progress->show();
+
+            // copy trajectory to worker-safe object
+            auto traj = traj_opt.value();
+
+            std::thread worker([this, traj, progress]() mutable {
+                // sample indices
+                auto sample_start_index = DataBase::instance().getCurrentIndex();
+                decltype(sample_start_index) sample_end_index;
+
+                // publish trajectory
+                RobotHandle::instance().moveJointByAbsPosition(traj);
+
+                // wait until RobotHandle reports finished; poll with sleep
+                while (RobotHandle::instance().isRunning()) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                }
+
+                sample_end_index = DataBase::instance().getCurrentIndex();
+                DynamicPlugin::instance().identify(sample_start_index, sample_end_index);
+                std::cout << "Using points from " << sample_start_index << " to " << sample_end_index << std::endl;
+                // update UI on the GUI thread
+                if (progress) {
+                    QMetaObject::invokeMethod(progress, [progress]() {
+                        if (progress) progress->close();
+                    }, Qt::QueuedConnection);
+                }
+                QMetaObject::invokeMethod(qApp, [this]() {
+                    auto size = DynamicPlugin::instance().getBaseParams().size() + DynamicPlugin::instance().getFrictionParams().size();
+                    base_param_size_->setText(QString::number(size));
+                    emit(identifyFinished());
+                }, Qt::QueuedConnection);
+            });
+            worker.detach();
         }
-        base_param_size_->setText(QString::number(DynamicPlugin::instance().getBaseParams().size()));
     }
 }
 

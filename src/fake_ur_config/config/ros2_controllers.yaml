@@ -1,0 +1,115 @@
+# This config file is used by ros2_control
+controller_manager:
+  ros__parameters:
+    update_rate: 1000  # Hz
+
+    trajectory_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    effort_controller:
+      type: effort_controllers/JointGroupEffortController
+
+    cia402_controller:
+      type: gpio_controllers/GpioCommandController
+        
+joint_state_broadcaster:
+  ros__parameters:
+    type: joint_state_broadcaster/JointStateBroadcaster
+
+
+trajectory_controller:
+  ros__parameters:
+    type: joint_trajectory_controller/JointTrajectoryController
+    joints:
+      - joint0
+      - joint1
+      - joint2
+      - joint3
+      - joint4
+      - joint5
+    command_interfaces:
+      - position
+      # - velocity
+    state_interfaces:
+      - position
+      - velocity
+    allow_nonzero_velocity_at_trajectory_end: true
+
+effort_controller:
+  ros__parameters:
+    command_interfaces:
+      - effort
+    state_interfaces:
+      - position
+      - velocity
+      - effort
+    joints:
+      - joint0
+      - joint1
+      - joint2
+      - joint3
+      - joint4
+      - joint5
+
+cia402_controller:
+  ros__parameters:
+    gpios:
+      - joint0
+      - joint1
+      - joint2
+      - joint3
+      - joint4
+      - joint5
+    command_interfaces:
+      joint0:
+        - interfaces:
+          - control_word
+          - mode
+      joint1:
+        - interfaces:
+          - control_word
+          - mode
+      joint2:
+        - interfaces:
+          - control_word
+          - mode
+      joint3:
+        - interfaces:
+          - control_word
+          - mode
+      joint4:
+        - interfaces:
+          - control_word
+          - mode
+      joint5:
+        - interfaces:
+          - control_word
+          - mode
+    state_interfaces:
+      joint0:
+        - interfaces:
+          - status_word
+          - mode
+      joint1:
+        - interfaces:
+          - status_word
+          - mode
+      joint2:
+        - interfaces:
+          - status_word
+          - mode
+      joint3:
+        - interfaces:
+          - status_word
+          - mode
+      joint4:
+        - interfaces:
+          - status_word
+          - mode
+      joint5:
+        - interfaces:
+          - status_word
+          - mode

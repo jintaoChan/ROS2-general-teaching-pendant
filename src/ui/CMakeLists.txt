@@ -32,7 +32,6 @@ file(GLOB_RECURSE PRO_FORM_DIR RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.ui)
 file(GLOB_RECURSE PRO_RESOURCES_DIR RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} resource*.qrc)
 file(GLOB_RECURSE PRO_INCLUDE_DIR RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} FOLLOW_SYMLINKS *.hpp *.h )
 file(GLOB_RECURSE PRO_SOURCES_DIR RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} FOLLOW_SYMLINKS *.cpp)
-#搜索头文件的位置
 include_directories(
   plot_page/
   plot_page/plot_widget/
@@ -60,7 +59,6 @@ include_directories(
   main_window/
   ${CMAKE_CURRENT_BINARY_DIR}
 )
-#qt头文件moc文件resource文件处理
 qt6_wrap_ui(QT_UI_HPP ${PRO_FORM_DIR})
 qt6_wrap_cpp(QT_MOC_HPP ${PRO_INCLUDE_DIR})
 qt6_add_resources(QT_RESOURCES_CPP ${PRO_RESOURCES_DIR})
@@ -73,7 +71,10 @@ add_executable(${PROJECT_NAME}
   ${QT_UI_HPP}
 )
 ament_target_dependencies(${PROJECT_NAME} ${THIS_PACKAGE_INCLUDE_DEPENDS})
-
+target_include_directories(${PROJECT_NAME}
+  PRIVATE
+  cereal
+)
 target_link_libraries(${PROJECT_NAME}
   magic_enum::magic_enum
   Qt6::Widgets

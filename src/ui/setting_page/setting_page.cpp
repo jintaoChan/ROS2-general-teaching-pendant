@@ -4,8 +4,10 @@
 #include "tcp.h"
 #include "param_identification.h"
 
-SettingPage::SettingPage(QWidget *parent)
-    : QWidget{parent}
+SettingPage::SettingPage(SettingPanel* setting_panel, QWidget *parent)
+    :
+    QWidget{parent},
+    setting_panel_(setting_panel)
 {
     layout = new QGridLayout(this);
     list_widget = new QListWidget;
@@ -30,4 +32,5 @@ SettingPage::SettingPage(QWidget *parent)
     splitter->setStretchFactor(1, 4);
     layout->addWidget(splitter);
 
+    connect(iden, &ParamIdentification::identifyFinished, setting_panel_, &SettingPanel::activateDrag);
 }

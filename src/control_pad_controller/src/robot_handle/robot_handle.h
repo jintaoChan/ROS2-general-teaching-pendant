@@ -5,7 +5,9 @@
 #include <vector>
 #include <unordered_map>
 #include <variant>
+#include <Eigen/Eigen>
 #include "singleton.hpp"
+#include "controller_switcher.h"
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/subscription.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
@@ -32,11 +34,22 @@ class Chain;
 class Frame;
 }
 
-// your own classes
 class DataBase;
 template<typename T> class Singleton;
 
-// ---- Data structures unchanged ----
+enum class DriverState
+{
+    STATE_UNDEFINED = 0,
+    STATE_START = 1,
+    STATE_NOT_READY_TO_SWITCH_ON,
+    STATE_SWITCH_ON_DISABLED,
+    STATE_READY_TO_SWITCH_ON,
+    STATE_SWITCH_ON,
+    STATE_OPERATION_ENABLED,
+    STATE_QUICK_STOP_ACTIVE,
+    STATE_FAULT_REACTION_ACTIVE,
+    STATE_FAULT
+};
 
 enum class ControlCoordinateSystemType {
     Base = 0,
@@ -83,7 +96,17 @@ using JointsPosition = std::unordered_map<std::string, Joint>;
 using JointsVelocity = std::unordered_map<std::string, Joint>;
 using JointsAcceleration = std::unordered_map<std::string, Joint>;
 using JointsTorque = std::unordered_map<std::string, Joint>;
+using JointsMode = std::unordered_map<std::string, int8_t>;
+using JointsStatus = std::unordered_map<std::string, DriverState>;
 using ToolInfo = std::unordered_map<std::string, KDL::Frame>;
+
+// Drag parameters per joint (simple storage for admittance / momentum observer tuning)
+enum class DragParamEnum : uint8_t{
+    D = 0,
+    M,
+};
+
+using DragParams = std::unordered_map<DragParamEnum, Eigen::VectorXd>;
 
 
 // ---------------- PIMPL version of RobotHandle ----------------
@@ -99,6 +122,9 @@ public:
     const urdf::Model& getURDFModel() const;
     const KDL::Chain& getKDLChain() const;
     const JointsPosition& getCurrentJointPosition() const;
+    const JointsVelocity& getCurrentJointVelocity() const;
+    const JointsTorque& getCurrentJointTorque() const;
+    const JointsTorque& getCurrentJointEstimatedExternalTorque() const;
     size_t getJointNums() const;
     const double& getJointVelocityLimit(const std::string&) const;
     const double& getJointLowerLimit(const std::string&) const;
@@ -111,15 +137,17 @@ public:
     const double& getCartesianLimitsMaxTransDec() const;
     const double& getCartesianLimitsMaxRotVel() const;
 
-    const int32_t& getControllerUpdatePeriod() const;
+    const uint64_t& getControllerUpdatePeriod() const;
 
     const std::string& getRobotArmBaseLinkName() const;
     const std::string& getRobotArmEndLinkName() const;
     const ToolInfo& getRobotArmToolInfo() const;
+    const DragParams& getDragParams() const;
 
     void moveJointByVelcoity(const JointsVelocity& joint_velocity);
     void moveJointByAbsPosition(const JointsPosition& joint_position, double velo_ratio);
     void moveJointByAbsPosition(trajectory_msgs::msg::JointTrajectory& joint_position);
+    void setJointTorque(const JointsTorque& joint_torque);
 
     void deleteToolFrame(const std::string& tool_name);
     void addToolFrame(const std::string& tool_name, const KDL::Frame& frame);
@@ -128,12 +156,18 @@ public:
     const bool& isToolFrameSet() const;
     const std::string& getCurrentToolFrame() const;
 
-    KDL::Frame GetFixedTransform(const KDL::Chain& chain);
-    void getToolFrameInfo(ToolInfo& res, const std::string& param_name);
-    void getFrameName(std::string& res, const std::string& param_name, const std::vector<std::string>& available_list, const std::string& or_value);
     void setIsRunning(bool is_running);
     const bool& isRunning() const;
     void setJointTorqueOffset(const std::string& joint_name, double v);
+
+    //CiA402 control
+    bool isDriverEnable() const;
+    bool isDriverError() const;
+    void disableMotorDrive();
+    void clearFault();
+    void enableMotorDrive();
+    void switchToCSP();
+    void switchToCST();
 
 private:
     class Impl;

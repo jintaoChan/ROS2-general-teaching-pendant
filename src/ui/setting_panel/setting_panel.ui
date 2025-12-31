@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>575</width>
+    <width>917</width>
     <height>188</height>
    </rect>
   </property>
@@ -33,6 +33,20 @@
     background-color: red;
 }</string>
          </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="clear_fault_button">
+         <property name="text">
+          <string>Clear Fault</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="motor_driver_enable_button">
          <property name="text">
           <string/>
          </property>
@@ -84,9 +98,16 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="add_to_point_pool_button">
+        <widget class="QPushButton" name="record_point_button">
          <property name="text">
-          <string>Add to PointPoolWidget</string>
+          <string>Record Point</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="drag_button">
+         <property name="text">
+          <string>Drag</string>
          </property>
         </widget>
        </item>

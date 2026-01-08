@@ -143,6 +143,7 @@ void ParamIdentification::loadParamClicked()
         DynamicPlugin::instance().setParams(base, friction, Pb, Pd, Kd);
         if(DynamicPlugin::instance().isReady()) {
             emit(identifyFinished());
+            std::cout << "Ready to drag!" << std::endl;
         }
         else {
             QMessageBox::warning(this, "Warning", "Invalid param file!");

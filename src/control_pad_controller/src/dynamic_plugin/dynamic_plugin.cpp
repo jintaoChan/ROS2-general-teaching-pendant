@@ -23,11 +23,6 @@ DynamicPlugin::DynamicPlugin()
     pinocchio::urdf::buildModel(urdf_tree, model_);
     data_ = Data(model_);
 
-    dep_future_ = std::async(std::launch::async,
-                             &DynamicPlugin::calculateDynamicParamsDependence,
-                             this,
-                             1e4,
-                             1e-5);
     all_params_ = Eigen::MatrixXd(0,1);
     for(size_t i = 1; i < model_.inertias.size(); ++i) {
         const auto& iner = model_.inertias[i];
@@ -219,11 +214,8 @@ const bool &DynamicPlugin::isReady() const
 }
 
 const Eigen::MatrixXd& DynamicPlugin::dependenceComputation() {
-    static std::once_flag base_params_model_initialized_flag;
-    std::call_once(base_params_model_initialized_flag, [this](){
-        dep_res_ = dep_future_.get();
-        base_params_model_ = ((dep_res_.Pb.transpose() + dep_res_.Kd * dep_res_.Pd.transpose()) * all_params_).eval();
-    });
+    calculateDynamicParamsDependence(1e4, 1e-5);
+    base_params_model_ = ((dep_res_.Pb.transpose() + dep_res_.Kd * dep_res_.Pd.transpose()) * all_params_).eval();
 
     return base_params_model_;
 }

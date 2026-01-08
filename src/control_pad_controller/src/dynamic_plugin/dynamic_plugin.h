@@ -53,6 +53,5 @@ private:
     Eigen::MatrixXd friction_params_;
     size_t nq_;
     Eigen::MatrixXd K0_;// first order momentum observer gains
-    std::future<DependencyAnalysisResult> dep_future_;
     bool is_ready_{false};
 };

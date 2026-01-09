@@ -4,13 +4,14 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include <variant>
 #include <Eigen/Eigen>
 #include "singleton.hpp"
-#include "controller_switcher.h"
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/subscription.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
+#include <kdl/frames.hpp>
+#include <kdl/chain.hpp>
+
 #include <trajectory_msgs/msg/joint_trajectory.hpp>
 
 // ROS
@@ -25,13 +26,6 @@ namespace urdf {
 class Model;
 class ModelInterface;
 class Joint;
-}
-
-// KDL
-namespace KDL {
-class Tree;
-class Chain;
-class Frame;
 }
 
 class DataBase;
@@ -57,36 +51,6 @@ enum class ControlCoordinateSystemType {
     EndEffector
 };
 
-enum class MoveTypeEnum : char {
-    POSE = 0,
-    POSITION,
-    POSTURE,
-    JOINT
-};
-
-struct TargetPointInfo {
-    MoveTypeEnum MoveType;
-    std::vector<double> Values;
-    std::vector<std::string> JointNames;
-};
-
-using MovePointInfo  = std::unordered_map<std::string, TargetPointInfo>;
-using MovePointInfos = std::unordered_map<std::string, MovePointInfo>;
-
-struct PointGroupTask {
-    int Times;
-    std::vector<MovePointInfo> Points;
-};
-
-using TaskUnion = std::variant<MovePointInfo, PointGroupTask>;
-
-struct MoveTask {
-    std::string PointName;
-    TaskUnion PointInfos;
-};
-
-using MoveTasks = std::vector<MoveTask>;
-
 struct Joint {
     std::shared_ptr<const urdf::Joint> joint_info;
     double joint_value = 0.0;
@@ -99,6 +63,20 @@ using JointsTorque = std::unordered_map<std::string, Joint>;
 using JointsMode = std::unordered_map<std::string, int8_t>;
 using JointsStatus = std::unordered_map<std::string, DriverState>;
 using ToolInfo = std::unordered_map<std::string, KDL::Frame>;
+
+enum class MoveTypeEnum : char {
+    POSE = 0,
+    JOINT
+};
+
+struct TargetPointInfo {
+    MoveTypeEnum MoveType;
+    JointsPosition JointValues;
+    KDL::Frame Pose;
+    double VelocityRatio{0.1};
+};
+using MovePointInfo  = std::unordered_map<std::string, TargetPointInfo>;
+
 
 // Drag parameters per joint (simple storage for admittance / momentum observer tuning)
 enum class DragParamEnum : uint8_t{

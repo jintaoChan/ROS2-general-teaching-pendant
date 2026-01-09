@@ -164,6 +164,23 @@ void KinematicsPlugin::moveJointPositionAbsolutely(const JointsPosition &pos, do
     joint_jog_timer_->reset();
 }
 
+void KinematicsPlugin::moveToPose(const KDL::Frame &pose, double velo_ratio)
+{
+    KDL::JntArray target_joints_value(joints_num_);
+    auto ik_ret = ik_solver_->CartToJnt(current_joint_position_, pose, target_joints_value);
+    JointsPosition target_joint_positions;
+    if (ik_ret < 0) {
+        RCLCPP_ERROR(node_->get_logger(), "Robot cannot arrive this target");
+        throw(std::runtime_error("Robot cannot arrive this target"));
+    }
+    else{
+        for (size_t i = 0; i < joints_num_; ++i) {
+            target_joint_positions[joints_names_[i]].joint_value = target_joints_value(i);
+        }
+        moveJointPositionAbsolutely(target_joint_positions,velo_ratio);
+    }
+}
+
 void KinematicsPlugin::stop(){
     joint_jog_timer_->cancel();
     cartesian_jog_timer_->cancel();
@@ -385,7 +402,7 @@ void KinematicsPlugin::remoteCartesianMoveCallback(const geometry_msgs::msg::Pos
     }
 }
 
-KDL::Frame KinematicsPlugin::tcpCalibration(const MovePointInfos &points)
+KDL::Frame KinematicsPlugin::tcpCalibration(const MovePointInfo &points)
 {
     std::vector<KDL::Frame> input;
     input.reserve(points.size());
@@ -394,15 +411,12 @@ KDL::Frame KinematicsPlugin::tcpCalibration(const MovePointInfos &points)
     for(const auto& p : points) {
         KDL::JntArray for_fk(joints_num_);
         KDL::Frame frame;
-        for(const auto& g: p.second) {
-            const auto& joint_names = g.second.JointNames;
-            const auto& joint_value = g.second.Values;
-            for(size_t i = 0; i < joint_names.size(); ++i) {
-                auto name_it = std::find(joints_names_.begin(), joints_names_.end(), joint_names[i]);
-                if(name_it != joints_names_.end()) {
-                    auto name_idx = std::distance(joints_names_.begin(), name_it);
-                    for_fk(name_idx) = joint_value[i];
-                }
+        const auto& joint_infos = p.second.JointValues;
+        for(const auto& j : joint_infos) {
+            auto name_it = std::find(joints_names_.begin(), joints_names_.end(), j.first);
+            if(name_it != joints_names_.end()) {
+                auto name_idx = std::distance(joints_names_.begin(), name_it);
+                for_fk(name_idx) = j.second.joint_value;
             }
         }
         fk_solver->JntToCart(for_fk, frame);
@@ -487,4 +501,9 @@ void KinematicsPlugin::stopDragging()
 bool KinematicsPlugin::isDragging()
 {
     return !drag_timer_->is_canceled();
+}
+
+bool KinematicsPlugin::isRunning()
+{
+    return !drag_timer_->is_canceled() || !cartesian_jog_timer_->is_canceled() || !joint_jog_timer_->is_canceled();
 }

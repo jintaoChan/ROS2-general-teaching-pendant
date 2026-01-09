@@ -1,6 +1,7 @@
 #include <QMimeData>
 #include <QDrag>
 #include <QInputDialog>
+#include <magic_enum/magic_enum.hpp>
 #include "point_pool.h"
 
 PointPoolWidget::PointPoolWidget(QWidget *parent)
@@ -10,6 +11,7 @@ PointPoolWidget::PointPoolWidget(QWidget *parent)
     model_->setHorizontalHeaderLabels(QStringList()
                                         << "Name"
                                         << "Target Type/Values"
+                                        << "Velocity Ratio"
                                      );
     point_poolItem_filter_delegate_ = new ItemFilterDelegate(this);
     this->setItemDelegate(point_poolItem_filter_delegate_);
@@ -34,18 +36,18 @@ QStringList PointPoolWidget::getPointsName() const
     return res;
 }
 
-MovePointInfo PointPoolWidget::getPoint(const std::string &point_name) const
+TargetPointInfo PointPoolWidget::getPoint(const std::string &point_name) const
 {
     return PointPool::instance().getPoint(point_name);
 }
 
-void PointPoolWidget::addPoint(const MovePointInfo &move_groups_state)
+void PointPoolWidget::addPoint(const TargetPointInfo &point_info)
 {
     bool ok;
     QString text = QInputDialog::getText(this, tr("Add a point"),
                                          tr("Please input point's name"), QLineEdit::Normal,
                                          "", &ok);
-    auto index = addPoint("", move_groups_state);
+    auto index = addPoint("", point_info);
     QWidget* editor = itemDelegate(index)->createEditor(this, QStyleOptionViewItem(), index);
 
     QLineEdit* line = qobject_cast<QLineEdit*>(editor);
@@ -83,28 +85,26 @@ void PointPoolWidget::deleteEvent(QModelIndex index)
     // deletePoint(index);
 }
 
-QModelIndex PointPoolWidget::addPoint(const std::string &point_name, const MovePointInfo &move_group_state)
+QModelIndex PointPoolWidget::addPoint(const std::string &point_name, const TargetPointInfo &point_info)
 {
     QStandardItem* point_item = newStdString(point_name, true);
-    for(const auto& group : move_group_state) {
-        QStandardItem* group_item = newStdString(group.first);
-        switch (group.second.MoveType) {
-        case MoveTypeEnum::JOINT:
-            group_item->appendColumn({});
-            for(size_t i = 0 ; i < group.second.JointNames.size(); ++i) {
-                group_item->appendRow({
-                    newStdString(group.second.JointNames[i]),
-                    newNumber(group.second.Values[i]),
-                });
-            }
-            break;
-        default:
-            break;
+    point_item->appendColumn({newStdString(std::string(magic_enum::enum_name(point_info.MoveType)))});
+    point_item->appendColumn({newNumber(point_info.VelocityRatio)});
+    switch (point_info.MoveType) {
+    case MoveTypeEnum::JOINT:
+        for(const auto& j : point_info.JointValues) {
+            point_item->appendRow({
+                newStdString({}),
+                newStdString(j.first),
+                newNumber(j.second.joint_value),
+            });
         }
-        point_item->appendRow({group_item, newStdString("JOINT")});
+        break;
+    default:
+        break;
     }
     model_->appendRow({point_item, newQString("")});
-    PointPool::instance().addPoint(point_name, move_group_state);
+    PointPool::instance().addPoint(point_name, point_info);
     return model_->indexFromItem(point_item);
 }
 

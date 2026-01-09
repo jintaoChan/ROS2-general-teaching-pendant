@@ -16,7 +16,7 @@ public:
     PointPool() = default;
 
 public:
-    void addPoint(const std::string& name, const MovePointInfo& point) {
+    void addPoint(const std::string& name, const TargetPointInfo& point) {
         point_pool_[name] = point;
     }
 
@@ -24,7 +24,7 @@ public:
         point_pool_.erase(name);
     }
 
-    const MovePointInfo& getPoint(const std::string& name) const {
+    const TargetPointInfo& getPoint(const std::string& name) const {
         return point_pool_.at(name);
     }
 
@@ -37,7 +37,7 @@ public:
     }
 
 private:
-    MovePointInfos point_pool_;
+    MovePointInfo point_pool_;
 
 };
 
@@ -55,8 +55,8 @@ public:
 
 public:
     auto getPointsName() const -> QStringList;
-    auto getPoint(const std::string& point_name) const -> MovePointInfo;
-    void addPoint(const MovePointInfo& move_groups_state);
+    auto getPoint(const std::string& point_name) const -> TargetPointInfo;
+    void addPoint(const TargetPointInfo& point_info);
     void deletePoint(QModelIndex index);
     void deletePoint(const std::string& point_name);
 
@@ -65,7 +65,7 @@ public:
 
 protected:
     void startDrag(Qt::DropActions supportedActions) override;
-    QModelIndex addPoint(const std::string& point_name, const MovePointInfo& move_group_state);
+    QModelIndex addPoint(const std::string& point_name, const TargetPointInfo& point_info);
 
 signals:
     void CallTaskListToCheckIfContainThisPoint(const std::string& name);

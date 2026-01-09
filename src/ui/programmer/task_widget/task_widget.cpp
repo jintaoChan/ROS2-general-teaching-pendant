@@ -5,6 +5,9 @@
 #include "task_widget.h"
 #include "ui_task_widget.h"
 #include "robot_handle.h"
+#include "task_executor.h"
+#include "move_task.h"
+#include "group_task.h"
 
 TaskWidget::TaskWidget(SettingPanel* setting_panel, QWidget *parent)
     : QWidget(parent)
@@ -23,7 +26,7 @@ TaskWidget::~TaskWidget()
     delete ui;
 }
 
-void TaskWidget::addPointFromControlPad(const MovePointInfo &p)
+void TaskWidget::addPointFromControlPad(const TargetPointInfo &p)
 {
     ui->point_pool->addPoint(p);
 }
@@ -65,7 +68,7 @@ void TaskWidget::on_add_group_button_clicked()
         if(model != nullptr) {
             for(int i = 0; i < model->rowCount(); ++i) {
                 if(model->item(i)->text() == newGroupName && model->item(i, 1) != nullptr && !model->item(i, 1)->text().isEmpty()) {
-                    QMessageBox::warning(this, "Warning", "Name Repetition with other group");
+                    QMessageBox::warning(this, "Warning", "Name Repetition with other action");
                     return;
                 }
             }
@@ -85,25 +88,25 @@ void TaskWidget::on_execute_button_clicked()
         QMessageBox::warning(this, "Task empty", "Select a task please!");
         return;
     }
-    MoveTasks task;
     for(int i = 0; i < editingTask->rowCount(); ++i) {
-        TaskUnion points;
         auto name = editingTask->item(i)->text().toStdString();
         if (editingTask->item(i, 1) != nullptr && !editingTask->item(i, 1)->text().isEmpty()) {
-            PointGroupTask pointGroup;
+            std::unique_ptr<GroupTask> group = std::make_unique<GroupTask>(name, editingTask->item(i, 1)->text().toInt());
             for(int j = 0; j < editingTask->item(i)->rowCount(); ++j) {
                 auto point_name = editingTask->item(i)->child(j)->text().toStdString();
-                pointGroup.Points.push_back(ui->point_pool->getPoint(point_name));
+                auto p = ui->point_pool->getPoint(point_name);
+                std::unique_ptr<RobotTask> t = std::make_unique<MoveTask>(p);
+                group->addAction(std::move(t));
             }
-            pointGroup.Times = editingTask->item(i, 1)->text().toInt();
-            points = pointGroup;
+            TaskExecutor::instance().addTask(std::move(group));
         }
         else {
-            points = ui->point_pool->getPoint(name);
+            auto p = ui->point_pool->getPoint(name);
+            std::unique_ptr<RobotTask> t = std::make_unique<MoveTask>(p);
+            TaskExecutor::instance().addTask(std::move(t));
         }
-        task.push_back({name, points});
     }
-    // QtConcurrent::run(&MoveExecutor::ExecuteTask, task, setting_panel_->getVelocity());
+    TaskExecutor::instance().start();
 }
 
 
@@ -116,6 +119,6 @@ void TaskWidget::on_delete_task_button_clicked()
 
 void TaskWidget::on_stop_button_clicked()
 {
-
+    TaskExecutor::instance().stop();
 }
 

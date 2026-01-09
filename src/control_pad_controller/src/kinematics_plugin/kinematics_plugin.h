@@ -24,17 +24,18 @@ public:
     void twistRobot(const geometry_msgs::msg::Twist& twist_msg);
     void moveJointPositionRelatively(const JointsPosition& pos, double velo_ratio);
     void moveJointPositionAbsolutely(const JointsPosition& pos, double velo_ratio);
+    void moveToPose(const KDL::Frame& pose, double velo_ratio);
     void stop();
     void startDragging();
     void stopDragging();
     bool isDragging();
-
+    bool isRunning();
 
     geometry_msgs::msg::PoseStamped getCurrentCartesianPose();
     void selectCoordinateSystem(const ControlCoordinateSystemType& coord_sys);
     void refreshCoordinateSystem();// tool interchange
 
-    KDL::Frame tcpCalibration(const MovePointInfos& points);
+    KDL::Frame tcpCalibration(const MovePointInfo& points);
 
 private:
     void cartesianJogCallback();

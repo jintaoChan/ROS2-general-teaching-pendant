@@ -5,6 +5,7 @@
 #include "kinematics_plugin.h"
 #include "dynamic_plugin.h"
 #include "point_pool.h"
+#include "task_executor.h"
 
 int main(int argc, char *argv[])
 {
@@ -26,6 +27,7 @@ int main(int argc, char *argv[])
     RobotHandle::init(robot_handle_node);
     KinematicsPlugin::init(kinematics_plugin_node);
     PointPool::init();
+    TaskExecutor::init();
 
     QApplication a(argc, argv);
     MainWindow w;

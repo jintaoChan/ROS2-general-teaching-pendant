@@ -144,7 +144,7 @@ void TCP::on_calibrate_button_clicked()
     StringSelectionDialog dlg(name_list);
     if (dlg.exec() == QDialog::Accepted) {
         selected = dlg.selectedItems();
-        MovePointInfos points;
+        MovePointInfo points;
         for(const auto& s : selected) {
             points[s] = PointPool::instance().getPoint((s));
         }

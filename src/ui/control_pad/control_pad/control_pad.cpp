@@ -33,13 +33,12 @@ ControlPad::ControlPad(SettingPanel* setting_panel, QWidget *parent)
     vlayout->addWidget(jg);
     hlayout->addLayout(vlayout);
 
-    connect(setting_panel_, &SettingPanel::on_add_to_point_pool_button_clicked, this, [this]() {
-        MovePointInfo p;
+    connect(setting_panel_, &SettingPanel::on_record_point_button_clicked, this, [this]() {
+        TargetPointInfo p;
         for(const auto& jointGroup: this->findChildren<JointGroupWidget*>()) {
-            p[jointGroup->getJointGroupName()].MoveType = MoveTypeEnum::JOINT;
+            p.MoveType = MoveTypeEnum::JOINT;
             for(const auto& joint: jointGroup->findChildren<JointWidget*>()) {
-                p[jointGroup->getJointGroupName()].JointNames.push_back(joint->getJointName());
-                p[jointGroup->getJointGroupName()].Values.push_back(joint->getJointPosition());
+                p.JointValues[joint->getJointName()].joint_value = joint->getJointPosition();
             }
         }
         emit storeCurrentPointToPointPool(p);

@@ -47,6 +47,10 @@ add_library(${PROJECT_NAME}
   ${CMAKE_CURRENT_SOURCE_DIR}/src/controller_switcher/controller_switcher.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/kinematics_plugin/kinematics_plugin.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/dynamic_plugin/dynamic_plugin.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/task/robot_task/robot_task.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/task/robot_task/move_task.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/task/robot_task/group_task.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/task/task_executor/task_executor.cpp
 )
 
 
@@ -56,6 +60,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/controller_switcher>
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/dynamic_plugin>
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/robot_handle>
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/task/robot_task>
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/task/task_executor>
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/database>
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/utils>
   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>

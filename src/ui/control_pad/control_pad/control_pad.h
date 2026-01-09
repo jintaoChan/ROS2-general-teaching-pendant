@@ -33,7 +33,7 @@ public slots:
     void MoveCommander(MoveButtonType type, MoveButtonEvent event, size_t idx);
 
 signals:
-    void storeCurrentPointToPointPool(const MovePointInfo& point);
+    void storeCurrentPointToPointPool(const TargetPointInfo& point);
 
 private:
     Ui::ControlPad *ui_;

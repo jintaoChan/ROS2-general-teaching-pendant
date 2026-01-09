@@ -22,7 +22,7 @@ public:
 
 
 public slots:
-    void addPointFromControlPad(const MovePointInfo& p);
+    void addPointFromControlPad(const TargetPointInfo& p);
 private slots:
     void on_task_item_clicked(const QModelIndex &index);
     void on_add_task_button_clicked();

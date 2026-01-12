@@ -19,6 +19,18 @@ TaskWidget::TaskWidget(SettingPanel* setting_panel, QWidget *parent)
     connect(ui->task_list, &TaskList::TaskDeleted, ui->task_detail, &TaskDetail::TaskDeleted);
     connect(ui->point_pool, &PointPoolWidget::CallTaskListToCheckIfContainThisPoint, ui->task_list, &TaskList::CheckTaskListIfContainThisPoint);
     connect(ui->task_list, &TaskList::ConfirmPointPoolToDeletedPoint, ui->point_pool, static_cast<void(PointPoolWidget::*)(const std::string&)>(&PointPoolWidget::deletePoint));
+
+    TaskExecutor::instance().setStateCallback([this](ExecutorState state) {
+        QMetaObject::invokeMethod(this, [this, state]() {
+            if (state == ExecutorState::IDLE) {
+                this->ui->execute_button->setEnabled(true);
+                this->ui->stop_button->setEnabled(false);
+            } else if (state == ExecutorState::RUNNING) {
+                this->ui->execute_button->setEnabled(false);
+                this->ui->stop_button->setEnabled(true);
+            }
+        }, Qt::QueuedConnection);
+    });
 }
 
 TaskWidget::~TaskWidget()

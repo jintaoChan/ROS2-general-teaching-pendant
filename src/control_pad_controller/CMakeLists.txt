@@ -36,8 +36,6 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
 foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
   find_package(${Dependency} REQUIRED)
 endforeach()
-find_package(Qt6 COMPONENTS Widgets Charts REQUIRED)
-
 
 # ros2_control plugin library
 add_library(${PROJECT_NAME}
@@ -70,8 +68,6 @@ ament_target_dependencies( ${PROJECT_NAME}  ${THIS_PACKAGE_INCLUDE_DEPENDS})
 
 target_link_libraries(${PROJECT_NAME}
   magic_enum::magic_enum
-  Qt6::Widgets
-  Qt6::Charts
   yaml-cpp::yaml-cpp
   ament_index_cpp::ament_index_cpp
 )

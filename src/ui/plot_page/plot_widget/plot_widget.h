@@ -13,6 +13,8 @@
 #include <QElapsedTimer>
 
 #include "database.h"
+#include "jkqtplotter/jkqtplotter.h"
+#include "jkqtplotter/graphs/jkqtplines.h"
 
 class PlotWidget : public QWidget
 {
@@ -25,22 +27,26 @@ public:
 public:
     void freeze(bool freeze);
     bool isRunning() const;
+    void clear();
 
 private slots:
-    void pushData();
+    void updateData();
 
 private:
     DataTypeEnum data_type_;
     std::string joint_name_;
     size_t window_size_;
-    QLineSeries* series_;
-    QChart* chart_;
-    QChartView* chart_view_;
-    QDateTimeAxis* axis_x_;
-    QValueAxis* axis_y_;
+    JKQTPlotter* plot_;
+    JKQTPXYLineGraph* graph_;
+    size_t column_x_;
+    size_t column_y_;
+
     QTimer* timer_;
 
     QElapsedTimer elapsed_;
+    size_t last_update_head_{0};
+    bool is_auto_scroll_ = true;
+    bool force_auto_scroll = false;
 };
 
 #endif // PLOT_WIDGET_H

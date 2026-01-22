@@ -11,8 +11,9 @@ Just plug it in and play.
 - Communication with motor drivers: **EtherCAT**  
 - EtherCAT master: **IgH**  
 - ROS 2 Control hardware interface wrapper: [ethercat_driver_ros2](https://github.com/ICube-Robotics/ethercat_driver_ros2)  
-- UI framework: **Qt**  
+- UI framework: **Qt6**  
 - Simulation: **Gazebo**  
+- Plot **JKQTPlotter** [installation instruction](https://jkriege2.github.io/JKQtPlotter/page_buildinstructions.html) 
 
 ---
 ## UI Demonstration

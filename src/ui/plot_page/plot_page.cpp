@@ -106,4 +106,7 @@ void PlotPage::freezeWindow()
 void PlotPage::clear()
 {
     DataBase::instance().clear();
+    for(auto& g: graph_list_) {
+        g->clear();
+    }
 }

@@ -1,13 +1,17 @@
 cmake_minimum_required(VERSION 3.5)
 project(auto_store_ui)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
+
 # Note: Compilation flag -fPIC is necessary. Otherwise, you'll receive error "You must build your code with position independent code if Qt was built with -reduce-relocations."
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic -fPIC)
+  add_compile_options(-Wall -Wextra -Wbuiltin-macro-redefined -Wpedantic -fPIC)
 endif()
 
 set(THIS_PACKAGE_INCLUDE_DEPENDS
@@ -25,8 +29,8 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
 foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
   find_package(${Dependency} REQUIRED)
 endforeach()
-
-find_package(Qt6 COMPONENTS Widgets Charts REQUIRED)
+find_package(JKQTPlotter6 REQUIRED)
+find_package(Qt6 COMPONENTS Widgets Charts OpenGLWidgets REQUIRED)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 file(GLOB_RECURSE PRO_FORM_DIR RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.ui)
 file(GLOB_RECURSE PRO_RESOURCES_DIR RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} resource*.qrc)
@@ -59,9 +63,8 @@ include_directories(
   main_window/
   ${CMAKE_CURRENT_BINARY_DIR}
 )
-qt6_wrap_ui(QT_UI_HPP ${PRO_FORM_DIR})
-qt6_wrap_cpp(QT_MOC_HPP ${PRO_INCLUDE_DIR})
-qt6_add_resources(QT_RESOURCES_CPP ${PRO_RESOURCES_DIR})
+
+
 add_executable(${PROJECT_NAME}
   main.cpp
   ${PRO_SOURCES_DIR}
@@ -79,6 +82,8 @@ target_link_libraries(${PROJECT_NAME}
   magic_enum::magic_enum
   Qt6::Widgets
   Qt6::Charts
+  Qt6::OpenGLWidgets
+  JKQTPlotter6::JKQTPlotter6
 )
 
 install(TARGETS ${PROJECT_NAME}

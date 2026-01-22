@@ -1,6 +1,6 @@
+#include <QtConcurrent/QtConcurrent>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QtConcurrent/QtConcurrent>
 
 #include "control_pad.h"
 #include "ui_control_pad.h"

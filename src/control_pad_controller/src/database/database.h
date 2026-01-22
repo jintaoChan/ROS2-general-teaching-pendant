@@ -1,8 +1,6 @@
 #pragma once
 #include <vector>
 #include <unordered_map>
-#include <QList>
-#include <QPointF>
 #include <magic_enum/magic_enum.hpp>
 #include "singleton.hpp"
 
@@ -29,8 +27,8 @@ public:
 
     void appendData(const double& d);
     void clear();
-    QList<QPointF> getSnapShot(size_t start, size_t n) const;
-    QList<QPointF> getSnapShot(size_t n) const;
+    std::vector<double> getSnapShot(size_t start, size_t n) const;
+    std::vector<double> getSnapShot(size_t n) const;
     const double& getMax() const;
     const double& getMin() const;
     size_t getCurrentSize() const;
@@ -56,6 +54,7 @@ public:
     std::unordered_map<std::string, std::unordered_map<DataTypeEnum, DataType>> getAllData() const;
     std::string toPlainText() const;
     size_t getCurrentIndex() const;
+    size_t getSize() const;
 
 private:
     class Impl;

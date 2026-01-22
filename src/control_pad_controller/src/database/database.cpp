@@ -8,10 +8,10 @@ public:
         update_period_{update_period},
         is_full_{false}
     {
-        data_base_.resize(buffer_size, {0, 0});
+        data_base_.resize(buffer_size, 0.0);
     }
 public:
-    QList<QPointF> data_base_;
+    std::vector<double> data_base_;
     size_t head_index_;
     size_t buffer_size_;
     uint64_t update_period_;
@@ -43,7 +43,7 @@ DataType& DataType::operator=(const DataType& other)
 
 void DataType::appendData(const double &d)
 {
-    impl_->data_base_[impl_->head_index_] = QPointF(impl_->idx_++ * impl_->update_period_ / 1e6, d);
+    impl_->data_base_[impl_->head_index_] = d;
     impl_->max_ = std::max(d, impl_->max_);
     impl_->min_ = std::min(d, impl_->min_);
     impl_->head_index_ = (impl_->head_index_ + 1) % impl_->buffer_size_;
@@ -59,26 +59,27 @@ void DataType::clear()
     *this = DataType(impl_->buffer_size_, impl_->update_period_);
 }
 
-QList<QPointF> DataType::getSnapShot(size_t start, size_t n) const {
-    QList<QPointF> snapshot;
+std::vector<double> DataType::getSnapShot(size_t start, size_t n) const {
+    std::vector<double> snapshot;
     if(start >=impl_-> head_index_ && impl_->is_full_){
-        n = (start + n > impl_->head_index_ + impl_->buffer_size_) ? (impl_->head_index_ + impl_->buffer_size_ - start) : n;
+        n = (start + n > impl_->head_index_ + impl_->buffer_size_) ? (impl_->head_index_ + impl_->buffer_size_ - start - 1) : n;
         if(start + n > impl_->buffer_size_){
-            snapshot.append(impl_->data_base_.sliced(start, impl_->buffer_size_ - start));
-            snapshot.append(impl_->data_base_.sliced(0, n - (impl_->buffer_size_ - start)));
+            size_t count = impl_->buffer_size_ - start;
+            snapshot.insert(snapshot.end(), impl_->data_base_.begin() + start, impl_->data_base_.begin() + start + count);
+            snapshot.insert(snapshot.end(), impl_->data_base_.begin(), impl_->data_base_.begin() + count);
         }
         else{
-            snapshot.append(impl_->data_base_.sliced(start, n));
+            snapshot.insert(snapshot.end(), impl_->data_base_.begin() + start, impl_->data_base_.begin() + start + n);
         }
     }
     else if (start < impl_->head_index_) {
-        n = (start + n > impl_->head_index_) ? (impl_->head_index_ - start) : n;
-        snapshot.append(impl_->data_base_.sliced(start, n));
+        n = (start + n > impl_->head_index_) ? (impl_->head_index_ - start - 1) : n;
+        snapshot.insert(snapshot.end(), impl_->data_base_.begin() + start, impl_->data_base_.begin() + start + n);
     }
     return snapshot;
 }
 
-QList<QPointF> DataType::getSnapShot(size_t n) const {
+std::vector<double> DataType::getSnapShot(size_t n) const {
     if(!impl_->is_full_){
         if(n > impl_->head_index_) {
             return getSnapShot(0, impl_->head_index_);
@@ -105,7 +106,7 @@ size_t DataType::getCurrentSize() const {
 }
 
 double DataType::getElement(size_t idx) const {
-    return impl_->data_base_.at(idx).y();
+    return impl_->data_base_.at(idx);
 }
 
 double DataType::getElementByNow(size_t idx) const {
@@ -206,5 +207,10 @@ std::string DataBase::toPlainText() const {
 size_t DataBase::getCurrentIndex() const
 {
     return impl_->data_base_.begin()->second.at(DataTypeEnum::POSITION).impl_->head_index_;
+}
+
+size_t DataBase::getSize() const
+{
+    return impl_->buffer_size_;
 }
 

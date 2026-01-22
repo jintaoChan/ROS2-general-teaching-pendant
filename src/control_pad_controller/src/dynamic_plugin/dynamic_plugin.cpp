@@ -76,10 +76,10 @@ void DynamicPlugin::identify(const size_t &db_start_index, const size_t &db_end_
         auto t_list = joint.at(DataTypeEnum::TORQUE).getSnapShot(db_start_index, db_end_index);
         // fill row (truncate to sample_count if needed)
         for (size_t i = 0; i < sample_count; ++i) {
-            q(row, i) = q_list[i].y();
-            v(row, i) = v_list[i].y();
-            a(row, i) = a_list[i].y();
-            t(row, i) = t_list[i].y();
+            q(row, i) = q_list[i];
+            v(row, i) = v_list[i];
+            a(row, i) = a_list[i];
+            t(row, i) = t_list[i];
         }
         ++row;
     }

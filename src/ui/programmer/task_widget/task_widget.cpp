@@ -1,6 +1,6 @@
+#include <QtConcurrent/QtConcurrent>
 #include <QInputDialog>
 #include <QMessageBox>
-#include <QtConcurrent/QtConcurrent>
 #include "group_info_dialog.h"
 #include "task_widget.h"
 #include "ui_task_widget.h"

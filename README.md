@@ -51,6 +51,12 @@ Do robotics dynamic parameter identification. After that, you may drag and teach
 Position/Velocity/Acceleration/Effort Graph
 
 
+### 5. IO
+![alt text](misc/io.png)
+
+IO module
+
+
 ---
 
 ## Usage
@@ -103,9 +109,21 @@ Fill in the template here and substitude `/config/fake_ur_config.urdf`.
 d. Adjust parameters in `/config/grtp.yaml`
 
 Parameter table
+
+- controllers_name: specify your own controller's name in /config/ros2_controllers.yaml. It is used to publish msg. Missing name may cause the corresponding module becoming invalid.
 - coordinate_system: fix the base/tool/end effector coordinate system which must present in urdf.
 - cartesian_limits: cartesian movement limitation.
 - drag_params: drag and drop teaching parameters. D for Damping. M for Assistance. **Strongly recommend to set D to 100 and set M to 0 first. Then slowly adjust them to a reasonable value.**
+
+e. Special driver
+
+For special driver which does not support in ethercat_driver_ros2, you may need to develop your own [ethercat_generic_plugins](https://github.com/ICube-Robotics/ethercat_driver_ros2/tree/jazzy/ethercat_generic_plugins).
+
+Here is the [special driver I have developed](https://github.com/jintaoChan/ethercat_driver_ros2/tree/local/ethercat_generic_plugins)
+
+- [One driver, multiple axis](https://github.com/jintaoChan/ethercat_driver_ros2/tree/local/ethercat_generic_plugins/ethercat_multi_axis_drive)
+- [CiA402 Driver need to wait couples of cycle before getting into OP](https://github.com/jintaoChan/ethercat_driver_ros2/tree/local/ethercat_generic_plugins/ethercat_wait_needed_cia402_drive). It's funny but it's possible.
+- [Mirror output command_interface to state_interface in ROS2 Control](https://github.com/jintaoChan/ethercat_driver_ros2/tree/local/ethercat_generic_plugins/ethercat_mirror_io)
 
 
 ### 3. Run

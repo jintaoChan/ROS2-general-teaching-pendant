@@ -6,6 +6,8 @@
 #include <urdf_parser/urdf_parser.h>
 #include <optional>
 #include <regex>
+#include <future>
+#include <unordered_set>
 #include <yaml-cpp/yaml.h>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <cmath>
@@ -20,7 +22,9 @@
 #include <rclcpp_action/rclcpp_action.hpp>
 #include <control_msgs/msg/joint_trajectory_controller_state.hpp>
 #include <control_msgs/msg/dynamic_interface_group_values.hpp>
+#include <controller_manager_msgs/srv/list_hardware_interfaces.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
+
 
 class RobotHandle::Impl {
 public:
@@ -37,7 +41,14 @@ public:
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr joint_torque_publisher_;
     rclcpp::Subscription<control_msgs::msg::DynamicInterfaceGroupValues>::SharedPtr motor_driver_status_subscription_;
     rclcpp::Publisher<control_msgs::msg::DynamicInterfaceGroupValues>::SharedPtr motor_driver_control_publisher_;
+    rclcpp::Subscription<control_msgs::msg::DynamicInterfaceGroupValues>::SharedPtr io_status_subscription_;
+    rclcpp::Publisher<control_msgs::msg::DynamicInterfaceGroupValues>::SharedPtr io_control_publisher_;
     rclcpp::TimerBase::SharedPtr driver_state_transition_timer_;
+
+    std::vector<std::string> io_input_groups_name_;
+    std::vector<std::string> io_output_groups_name_;
+    std::unordered_map<std::string, std::vector<std::string>> io_group_interface_names_;
+    std::unordered_map<std::string, std::unordered_set<std::string>> io_group_state_interfaces_;
 
     uint64_t controller_update_period_; //ns
     std::vector<std::string> joint_names_;
@@ -71,6 +82,9 @@ public:
 
     JointsMode current_joint_mode_;
     JointsStatus current_joint_status_;
+    std::vector<MotorStatusCallback> motor_status_callbacks_;
+    IOStatus io_status_;
+    std::vector<IOStatusCallback> io_status_callbacks_;
 
     rclcpp_action::ClientGoalHandle<control_msgs::action::FollowJointTrajectory>::WrappedResult controller_result_;
     bool is_running_ = false;
@@ -85,7 +99,9 @@ public:
     void initDatabase();
     void loadCartesianLimits();
     void loadDragParams();
-    void createROS2Source();
+    void createROS2Source(); //create subs\client according to controllers' name
+    void loadIOModulesName();
+    void loadIOInterfacesNameFromService();
 
     KDL::Frame getFixedTransform(const KDL::Chain& chain);
     DriverState getDriverState(uint16_t status_word);
@@ -103,6 +119,11 @@ public:
     void jointStateCallback(const sensor_msgs::msg::JointState &msg);
     void controllerStateCallback(const control_msgs::msg::JointTrajectoryControllerState& msg);
     void motorDriverStatusCallback(const control_msgs::msg::DynamicInterfaceGroupValues& msg);
+    void ioStatusCallback(const control_msgs::msg::DynamicInterfaceGroupValues& msg);
+
+    void registerMotorStatusCallback(MotorStatusCallback cb);
+    void registerIOStatusCallback(IOStatusCallback cb);
+    void setIOState(const std::string& module_name, const std::string& interface_name, bool target_state);
 };
 
 void RobotHandle::Impl::loadURDFFrames() {
@@ -236,14 +257,103 @@ void RobotHandle::Impl::loadDragParams() {
 }
 
 void RobotHandle::Impl::createROS2Source() {
+    YAML::Node root = YAML::LoadFile(grtp_path_);
+    YAML::Node controllers_name = root["controllers_name"];
+    std::string position_controller_name = controllers_name["position_controller"].as<std::string>();
+    std::string torque_controller_name = controllers_name["torque_controller"].as<std::string>();
+    std::string cia402_controller_name = controllers_name["cia402_controller"].as<std::string>();
+    std::string io_controller_name = controllers_name["io_controller"].as<std::string>();
+
+
     joint_state_subscription_ = node_->create_subscription<sensor_msgs::msg::JointState>("/joint_states", 10, std::bind(&RobotHandle::Impl::jointStateCallback, this, std::placeholders::_1));
-    controller_state_subscription_ = node_->create_subscription<control_msgs::msg::JointTrajectoryControllerState>("trajectory_controller/controller_state", 10, std::bind(&RobotHandle::Impl::controllerStateCallback, this, std::placeholders::_1));
-    joint_traj_publisher_ = node_->create_publisher<trajectory_msgs::msg::JointTrajectory>("trajectory_controller/joint_trajectory", 10);
-    joint_torque_publisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>("/effort_controller/commands", 10);
-    motor_driver_status_subscription_ = node_->create_subscription<control_msgs::msg::DynamicInterfaceGroupValues>("/cia402_controller/gpio_states", 10, std::bind(&RobotHandle::Impl::motorDriverStatusCallback, this, std::placeholders::_1));
-    motor_driver_control_publisher_ = node_->create_publisher<control_msgs::msg::DynamicInterfaceGroupValues>("/cia402_controller/commands", 10);
+    controller_state_subscription_ = node_->create_subscription<control_msgs::msg::JointTrajectoryControllerState>(position_controller_name + "/controller_state", 10, std::bind(&RobotHandle::Impl::controllerStateCallback, this, std::placeholders::_1));
+    joint_traj_publisher_ = node_->create_publisher<trajectory_msgs::msg::JointTrajectory>(position_controller_name + "/joint_trajectory", 10);
+    joint_torque_publisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>(torque_controller_name + "/commands", 10);
+    motor_driver_status_subscription_ = node_->create_subscription<control_msgs::msg::DynamicInterfaceGroupValues>(cia402_controller_name + "/gpio_states", 10, std::bind(&RobotHandle::Impl::motorDriverStatusCallback, this, std::placeholders::_1));
+    motor_driver_control_publisher_ = node_->create_publisher<control_msgs::msg::DynamicInterfaceGroupValues>(cia402_controller_name + "/commands", 10);
+    io_status_subscription_ = node_->create_subscription<control_msgs::msg::DynamicInterfaceGroupValues>(io_controller_name + "/gpio_states", 10, std::bind(&RobotHandle::Impl::ioStatusCallback, this, std::placeholders::_1));
+    io_control_publisher_ = node_->create_publisher<control_msgs::msg::DynamicInterfaceGroupValues>(io_controller_name + "/commands", 10);
+    
     driver_state_transition_timer_ = node_->create_wall_timer(std::chrono::nanoseconds(controller_update_period_), std::bind(&RobotHandle::Impl::enableMotorDrive, this));
     driver_state_transition_timer_->cancel();
+}
+
+void RobotHandle::Impl::loadIOModulesName()
+{
+    YAML::Node root = YAML::LoadFile(grtp_path_);
+    YAML::Node io_group_name = root["io_group_name"];
+    io_input_groups_name_ =  io_group_name["input"].as<std::vector<std::string>>();
+    io_output_groups_name_ =  io_group_name["output"].as<std::vector<std::string>>();
+    loadIOInterfacesNameFromService();
+}
+
+void RobotHandle::Impl::loadIOInterfacesNameFromService()
+{
+    io_group_interface_names_.clear();
+    io_group_state_interfaces_.clear();
+
+    for (const auto &group : io_input_groups_name_) {
+        io_group_interface_names_[group] = {};
+        io_group_state_interfaces_[group] = {};
+    }
+    for (const auto &group : io_output_groups_name_) {
+        io_group_interface_names_[group] = {};
+        io_group_state_interfaces_[group] = {};
+    }
+
+    auto client = node_->create_client<controller_manager_msgs::srv::ListHardwareInterfaces>(
+        "/controller_manager/list_hardware_interfaces");
+    if (!client->wait_for_service(std::chrono::seconds(2))) {
+        RCLCPP_WARN(node_->get_logger(), "Service /controller_manager/list_hardware_interfaces is unavailable.");
+        return;
+    }
+
+    auto request = std::make_shared<controller_manager_msgs::srv::ListHardwareInterfaces::Request>();
+    auto future = client->async_send_request(request);
+    if (future.wait_for(std::chrono::seconds(2)) != std::future_status::ready) {
+        RCLCPP_WARN(node_->get_logger(), "Calling /controller_manager/list_hardware_interfaces timed out or failed.");
+        return;
+    }
+
+    const auto response = future.get();
+    auto parse_group_interface = [](const std::string &full_name, std::string &group, std::string &interface_name) {
+        const auto separator = full_name.find('/');
+        if (separator == std::string::npos || separator == 0 || separator + 1 >= full_name.size()) {
+            return false;
+        }
+        group = full_name.substr(0, separator);
+        interface_name = full_name.substr(separator + 1);
+        return true;
+    };
+
+    for (const auto &hw_if : response->command_interfaces) {
+        std::string group;
+        std::string interface_name;
+        if (!parse_group_interface(hw_if.name, group, interface_name)) {
+            continue;
+        }
+        auto group_it = io_group_interface_names_.find(group);
+        if (group_it == io_group_interface_names_.end()) {
+            continue;
+        }
+        auto &ordered_interfaces = group_it->second;
+        if (std::find(ordered_interfaces.begin(), ordered_interfaces.end(), interface_name) == ordered_interfaces.end()) {
+            ordered_interfaces.push_back(interface_name);
+        }
+    }
+
+    for (const auto &hw_if : response->state_interfaces) {
+        std::string group;
+        std::string interface_name;
+        if (!parse_group_interface(hw_if.name, group, interface_name)) {
+            continue;
+        }
+        auto group_it = io_group_state_interfaces_.find(group);
+        if (group_it == io_group_state_interfaces_.end()) {
+            continue;
+        }
+        group_it->second.insert(interface_name);
+    }
 }
 
 KDL::Frame RobotHandle::Impl::getFixedTransform(const KDL::Chain& chain)
@@ -442,6 +552,7 @@ RobotHandle::RobotHandle(const std::shared_ptr<rclcpp::Node>& node)
     impl_->loadCartesianLimits();
     impl_->loadDragParams();
     impl_->createROS2Source();
+    impl_->loadIOModulesName();
     switchToCSP();
 }
 
@@ -676,6 +787,72 @@ void RobotHandle::Impl::motorDriverStatusCallback(const control_msgs::msg::Dynam
             }
         }
     }
+
+    for(const auto& sc : motor_status_callbacks_) {
+        sc(current_joint_status_);
+    }
+}
+
+void RobotHandle::Impl::ioStatusCallback(const control_msgs::msg::DynamicInterfaceGroupValues &msg)
+{
+    constexpr double kBoolTolerance = 1e-6;
+
+    io_status_.clear();
+    for(size_t i = 0; i < msg.interface_groups.size(); ++i) {
+        const auto& vals = msg.interface_values[i];
+        const auto& module_name = msg.interface_groups[i];
+        if (std::find(io_input_groups_name_.begin(), io_input_groups_name_.end(), module_name) != io_input_groups_name_.end() ||
+            std::find(io_output_groups_name_.begin(), io_output_groups_name_.end(), module_name) != io_output_groups_name_.end()) {
+            io_status_.push_back({module_name,{}});
+            for(size_t i = 0; i < vals.interface_names.size(); ++i) {
+                const double raw_value = vals.values[i];
+                IOValue io_value = std::nullopt;
+
+                if (std::isfinite(raw_value)) {
+                    if (std::abs(raw_value) <= kBoolTolerance) {
+                        io_value = false;
+                    } else if (std::abs(raw_value - 1.0) <= kBoolTolerance) {
+                        io_value = true;
+                    }
+                }
+
+                io_status_.back().second.push_back({vals.interface_names[i], io_value});
+            }
+        }
+        else {
+            RCLCPP_WARN(node_->get_logger(), "Detected IO module have not been registered");
+        }
+    }
+
+    for(const auto& sc : io_status_callbacks_) {
+        sc(io_status_);
+    }
+}
+
+void RobotHandle::Impl::registerMotorStatusCallback(MotorStatusCallback cb)
+{
+    motor_status_callbacks_.push_back(cb);
+}
+
+void RobotHandle::Impl::registerIOStatusCallback(IOStatusCallback cb)
+{
+    io_status_callbacks_.push_back(cb);
+}
+
+void RobotHandle::Impl::setIOState(const std::string &module_name, const std::string &interface_name, bool target_state)
+{
+    if (!io_control_publisher_) {
+        RCLCPP_WARN(node_->get_logger(), "IO control publisher is not available.");
+        return;
+    }
+
+    control_msgs::msg::DynamicInterfaceGroupValues msg;
+    control_msgs::msg::InterfaceValue interface_value;
+    interface_value.interface_names.push_back(interface_name);
+    interface_value.values.push_back(target_state ? 1.0 : 0.0);
+    msg.interface_groups.push_back(module_name);
+    msg.interface_values.push_back(interface_value);
+    io_control_publisher_->publish(msg);
 }
 
 //warpper function
@@ -693,16 +870,9 @@ void RobotHandle::setJointTorqueOffset(const std::string& joint_name, double v){
     impl_->joint_torque_offset_[joint_name].joint_value = v;
 }
 
-bool RobotHandle::isDriverEnable() const
+void RobotHandle::registerMotorStatusCallback(MotorStatusCallback cb)
 {
-    return std::all_of(impl_->current_joint_status_.begin(), impl_->current_joint_status_.end(),
-                       [](const auto& s) { return s.second == DriverState::STATE_OPERATION_ENABLED; });
-}
-
-bool RobotHandle::isDriverError() const
-{
-    return std::any_of(impl_->current_joint_status_.begin(), impl_->current_joint_status_.end(),
-                       [](const auto& s) { return s.second == DriverState::STATE_FAULT; });
+    return impl_->registerMotorStatusCallback(cb);
 }
 
 void RobotHandle::disableMotorDrive()
@@ -732,3 +902,41 @@ void RobotHandle::switchToCST()
     impl_->switchDriverMode(10);
 }
 
+const std::vector<std::string>& RobotHandle::getIOInputGroupsName() const
+{
+    return impl_->io_input_groups_name_;
+}
+
+const std::vector<std::string>& RobotHandle::getIOOutputGroupsName() const
+{
+    return impl_->io_output_groups_name_;
+}
+
+const std::vector<std::string>& RobotHandle::getIOInterfacesName(const std::string &module_name) const
+{
+    static const std::vector<std::string> kEmpty;
+    auto it = impl_->io_group_interface_names_.find(module_name);
+    if (it == impl_->io_group_interface_names_.end()) {
+        return kEmpty;
+    }
+    return it->second;
+}
+
+bool RobotHandle::isIOMonitorable(const std::string &module_name, const std::string &interface_name) const
+{
+    auto it = impl_->io_group_state_interfaces_.find(module_name);
+    if (it == impl_->io_group_state_interfaces_.end()) {
+        return false;
+    }
+    return it->second.find(interface_name) != it->second.end();
+}
+
+void RobotHandle::registerIOStatusCallback(IOStatusCallback cb)
+{
+    return impl_->registerIOStatusCallback(cb);
+}
+
+void RobotHandle::setIOState(const std::string &module_name, const std::string &interface_name, bool target_state)
+{
+    impl_->setIOState(module_name, interface_name, target_state);
+}

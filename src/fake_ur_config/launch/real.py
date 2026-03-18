@@ -88,6 +88,16 @@ def generate_launch_description():
             ],
     )
 
+    gpio_spawner = Node(
+        package='controller_manager',
+        executable='spawner',
+        arguments=[
+            'gpio_controller',
+            '--param-file',
+            robot_controllers,
+            ],
+    )
+
 
     delayed_jtc_spawner = RegisterEventHandler(
         event_handler=OnProcessExit(
@@ -114,5 +124,6 @@ def generate_launch_description():
         controller_manager_spawner,
         jsb_spawner,
         cia402_spawner,
+        gpio_spawner,
         delayed_jtc_spawner, 
     ])

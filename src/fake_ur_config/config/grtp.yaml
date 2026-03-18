@@ -3,6 +3,16 @@
 
 database_buffer_size: 600000
 
+controllers_name:
+  position_controller: trajectory_controller
+  torque_controller: effort_controller
+  cia402_controller: cia402_controller
+  io_controller: gpio_controller
+
+io_group_name:
+  input: [beckhoff_input]
+  output: [beckhoff_output]
+
 coordinate_system:
   base_frame: base_link
   # tool_frame: 

@@ -38,6 +38,9 @@ private:
     ControlCoordinateSystemType control_coordinate_system_type_;
     int previous_coordinate_index_;
     QTimer* timer_;
+
+    bool is_enabled_;
+    bool is_in_error_;
 };
 
 class EmptyOkDoubleValidator : public QDoubleValidator {

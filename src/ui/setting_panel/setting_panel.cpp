@@ -42,6 +42,24 @@ SettingPanel::SettingPanel(QWidget *parent)
     ui_->horizontalSlider_velocity->setValue(0);
     ui_->drag_button->setEnabled(false);
 
+    RobotHandle::instance().registerMotorStatusCallback([this](JointsStatus state) {
+        QMetaObject::invokeMethod(this, [this, state]() {
+            bool is_enabled = true;
+            bool is_in_error = false;
+            for(const auto& s: state) {
+                if(s.second == DriverState::STATE_FAULT) {
+                    is_in_error = true;
+                }
+                if(s.second != DriverState::STATE_OPERATION_ENABLED) {
+                    is_enabled = false;
+                }
+            }
+            is_enabled_ = is_enabled;
+            is_in_error_ = is_in_error;
+            ;
+        }, Qt::QueuedConnection);
+    });
+
     timer_ = new QTimer(this);
     connect(timer_, &QTimer::timeout, this, &SettingPanel::regularUpdate);
     timer_->start(20);
@@ -91,15 +109,13 @@ void SettingPanel::regularUpdate()
     }
     ui_->running_state_label->setStyleSheet(styleSheet);
 
-    const auto& is_enable = RobotHandle::instance().isDriverEnable();
-    if(is_enable) {
+    if(is_enabled_) {
         ui_->motor_driver_enable_button->setText("Disable");
     }
     else{
         ui_->motor_driver_enable_button->setText("Enable");
     }
-    const auto& is_error = RobotHandle::instance().isDriverError();
-    if(is_error) {
+    if(is_in_error_) {
         ui_->clear_fault_button->setEnabled(true);
     }
     else{
@@ -142,11 +158,9 @@ void SettingPanel::on_clear_fault_button_clicked()
     RobotHandle::instance().clearFault();
 }
 
-
 void SettingPanel::on_motor_driver_enable_button_clicked()
 {
-    const auto& is_enable = RobotHandle::instance().isDriverEnable();
-    if(is_enable) {
+    if(is_enabled_) {
         RobotHandle::instance().disableMotorDrive();
     }
     else{

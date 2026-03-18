@@ -123,9 +123,73 @@
           <param name="slave_config">$(find fake_ur_config)/driver_config/leader5.yaml</param>
         </ec_module>
       </joint>
+      <gpio name="beckhoff_input">
+        <state_interface name="d_1"/>
+        <state_interface name="d_2"/>
+        <state_interface name="d_3"/>
+        <state_interface name="d_4"/>
+        <state_interface name="d_5"/>
+        <state_interface name="d_6"/>
+        <state_interface name="d_7"/>
+        <state_interface name="d_8"/>
+        <state_interface name="d_9"/>
+        <state_interface name="d_10"/>
+        <state_interface name="d_11"/>
+        <state_interface name="d_12"/>
+        <state_interface name="d_13"/>
+        <state_interface name="d_14"/>
+        <state_interface name="d_15"/>
+        <state_interface name="d_16"/>
+        <ec_module name="EL1809">
+          <plugin>ethercat_generic_plugins/GenericEcSlave</plugin>
+          <param name="alias">0</param>
+          <param name="position">7</param>
+          <param name="slave_config">$(find fake_ur_config)/driver_config/el1809.yaml</param>
+        </ec_module>
+      </gpio>
+      <gpio name="beckhoff_output">
+        <state_interface name="d_1"/>
+        <state_interface name="d_2"/>
+        <state_interface name="d_3"/>
+        <state_interface name="d_4"/>
+        <state_interface name="d_5"/>
+        <state_interface name="d_6"/>
+        <state_interface name="d_7"/>
+        <state_interface name="d_8"/>
+        <state_interface name="d_9"/>
+        <state_interface name="d_10"/>
+        <state_interface name="d_11"/>
+        <state_interface name="d_12"/>
+        <state_interface name="d_13"/>
+        <state_interface name="d_14"/>
+        <state_interface name="d_15"/>
+        <state_interface name="d_16"/>
+        <command_interface name="d_1"/>
+        <command_interface name="d_2"/>
+        <command_interface name="d_3"/>
+        <command_interface name="d_4"/>
+        <command_interface name="d_5"/>
+        <command_interface name="d_6"/>
+        <command_interface name="d_7"/>
+        <command_interface name="d_8"/>
+        <command_interface name="d_9"/>
+        <command_interface name="d_10"/>
+        <command_interface name="d_11"/>
+        <command_interface name="d_12"/>
+        <command_interface name="d_13"/>
+        <command_interface name="d_14"/>
+        <command_interface name="d_15"/>
+        <command_interface name="d_16"/>
+        <ec_module name="EL2809">
+          <plugin>ethercat_generic_plugins/MirrorIO</plugin>
+          <param name="alias">0</param>
+          <param name="position">8</param>
+          <param name="slave_config">$(find fake_ur_config)/driver_config/el2809.yaml</param>
+        </ec_module>
+      </gpio>
       
     </ros2_control>
 
   </xacro:macro>
 
-  </robot>
+</robot>

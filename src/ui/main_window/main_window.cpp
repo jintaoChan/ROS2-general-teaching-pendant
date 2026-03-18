@@ -6,6 +6,7 @@
 #include "setting_panel.h"
 #include "setting_page.h"
 #include "plot_page.h"
+#include "io.h"
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -30,6 +31,9 @@ MainWindow::MainWindow(QWidget *parent)
     tab_widget->addTab(setting_page, "Setting");
     PlotPage* plot_page = new PlotPage(10000, ui->centralwidget);
     tab_widget->addTab(plot_page, "Plot");
+    IOPanel* io_panel = new IOPanel();
+    tab_widget->addTab(io_panel, "IO");
+
 
     main_layout->addWidget(tab_widget);
     main_layout->addWidget(setting_pannel);

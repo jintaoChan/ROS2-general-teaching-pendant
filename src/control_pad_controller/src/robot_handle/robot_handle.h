@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -62,6 +63,8 @@ using JointsAcceleration = std::unordered_map<std::string, Joint>;
 using JointsTorque = std::unordered_map<std::string, Joint>;
 using JointsMode = std::unordered_map<std::string, int8_t>;
 using JointsStatus = std::unordered_map<std::string, DriverState>;
+using IOValue = std::optional<bool>;
+using IOStatus = std::vector<std::pair<std::string, std::vector<std::pair<std::string, IOValue>>>>; //<module_name, <interface_name, val>>
 using ToolInfo = std::unordered_map<std::string, KDL::Frame>;
 
 enum class MoveTypeEnum : char {
@@ -86,8 +89,8 @@ enum class DragParamEnum : uint8_t{
 
 using DragParams = std::unordered_map<DragParamEnum, Eigen::VectorXd>;
 
-
-// ---------------- PIMPL version of RobotHandle ----------------
+using MotorStatusCallback = std::function<void(JointsStatus)>;
+using IOStatusCallback = std::function<void(IOStatus)>;
 
 class RobotHandle : public Singleton<RobotHandle> {
     friend class Singleton<RobotHandle>;
@@ -139,13 +142,21 @@ public:
     void setJointTorqueOffset(const std::string& joint_name, double v);
 
     //CiA402 control
-    bool isDriverEnable() const;
-    bool isDriverError() const;
+    void registerMotorStatusCallback(MotorStatusCallback cb);
     void disableMotorDrive();
     void clearFault();
     void enableMotorDrive();
     void switchToCSP();
     void switchToCST();
+
+    //io
+    const std::vector<std::string>& getIOInputGroupsName() const;
+    const std::vector<std::string>& getIOOutputGroupsName() const;
+    const std::vector<std::string>& getIOInterfacesName(const std::string& module_name) const;
+    bool isIOMonitorable(const std::string& module_name, const std::string& interface_name) const;
+    void registerIOStatusCallback(IOStatusCallback cb);
+    void setIOState(const std::string& module_name, const std::string& interface_name, bool target_state);
+
 
 private:
     class Impl;

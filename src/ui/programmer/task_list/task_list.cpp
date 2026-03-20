@@ -17,7 +17,8 @@ void TaskList::addTask(const std::string &taskName)
 {
     QStandardItemModel* model = new QStandardItemModel(this);
     model->setHorizontalHeaderLabels(QStringList()
-                                     << "Point/Group Name"
+                                     << "Action Name"
+                                     << "Type"
                                      << "Recycle Times"
                                      );
     m_TaskLists[taskName] = model;

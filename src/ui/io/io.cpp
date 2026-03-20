@@ -151,7 +151,7 @@ IOPanel::IOPanel(QWidget *parent) : QWidget(parent) {
     
     scroll_area_->setWidget(container_);
     main_layout->addWidget(scroll_area_);
-    RobotHandle::instance().registerIOStatusCallback([this](IOStatus state){
+    io_status_callback_id_ = RobotHandle::instance().registerIOStatusCallback([this](IOStatus state){
         {
             std::lock_guard<std::mutex> lock(pending_state_mutex_);
             pending_state_ = std::move(state);
@@ -166,6 +166,14 @@ IOPanel::IOPanel(QWidget *parent) : QWidget(parent) {
         }, Qt::QueuedConnection);
     });
 
+}
+
+IOPanel::~IOPanel()
+{
+    if (io_status_callback_id_.has_value()) {
+        RobotHandle::instance().unregisterIOStatusCallback(io_status_callback_id_.value());
+        io_status_callback_id_ = std::nullopt;
+    }
 }
 
 void IOPanel::loadOutputInterfaceNamesFromRobotHandle()

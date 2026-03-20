@@ -66,6 +66,7 @@ class IOPanel : public QWidget {
     Q_OBJECT
 public:
     explicit IOPanel(QWidget *parent = nullptr);
+    ~IOPanel() override;
     
     void initLayout(IOStatus state);
 
@@ -82,6 +83,7 @@ private:
     std::unordered_map<std::string, std::vector<std::string>> output_group_no_feedback_interfaces_;
     rclcpp::Node::SharedPtr io_query_node_;
     rclcpp::Client<controller_manager_msgs::srv::ListHardwareInterfaces>::SharedPtr list_hw_if_client_;
+    std::optional<size_t> io_status_callback_id_;
     IOStatus pending_state_;
     std::mutex pending_state_mutex_;
     std::atomic<bool> update_scheduled_{false};

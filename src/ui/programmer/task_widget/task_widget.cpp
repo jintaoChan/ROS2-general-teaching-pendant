@@ -6,8 +6,10 @@
 #include "ui_task_widget.h"
 #include "robot_handle.h"
 #include "task_executor.h"
+#include "task_detail.h"
 #include "move_task.h"
 #include "group_task.h"
+#include "io_task.h"
 
 TaskWidget::TaskWidget(SettingPanel* setting_panel, QWidget *parent)
     : QWidget(parent)
@@ -61,6 +63,77 @@ void TaskWidget::on_add_task_button_clicked()
     ui->task_list->edit(index);
 }
 
+void TaskWidget::on_add_action_button_clicked()
+{
+    QStringList items;
+    items << "Point" << "Group" << "IO";
+    bool ok;
+    QString selectedItem = QInputDialog::getItem(this, "Action Type", "Choose an action type", items, 0, false, &ok);
+    if(!ok) {
+        return;
+    }
+
+    if (selectedItem == "Point") {
+        on_add_point_button_clicked();
+    } else if (selectedItem == "Group") {
+        on_add_group_button_clicked();
+    } else if (selectedItem == "IO") {
+        addIOActionByDialog();
+    }
+}
+
+void TaskWidget::addIOActionByDialog()
+{
+    std::vector<std::string> modules;
+    const auto& output_modules = RobotHandle::instance().getIOOutputGroupsName();
+    modules.insert(modules.end(), output_modules.begin(), output_modules.end());
+    std::sort(modules.begin(), modules.end());
+    modules.erase(std::unique(modules.begin(), modules.end()), modules.end());
+
+    if (modules.empty()) {
+        QMessageBox::warning(this, "IO", "No output IO module available.");
+        return;
+    }
+
+    QStringList module_items;
+    for (const auto& module : modules) {
+        module_items << QString::fromStdString(module);
+    }
+
+    bool module_ok;
+    QString selected_module = QInputDialog::getItem(this, "IO Module", "Choose module", module_items, 0, false, &module_ok);
+    if(!module_ok) {
+        return;
+    }
+
+    const auto& interfaces = RobotHandle::instance().getIOInterfacesName(selected_module.toStdString());
+    if (interfaces.empty()) {
+        QMessageBox::warning(this, "IO", "No IO interface in selected module.");
+        return;
+    }
+
+    QStringList interface_items;
+    for (const auto& interface_name : interfaces) {
+        interface_items << QString::fromStdString(interface_name);
+    }
+
+    bool interface_ok;
+    QString selected_interface = QInputDialog::getItem(this, "IO Interface", "Choose interface", interface_items, 0, false, &interface_ok);
+    if(!interface_ok) {
+        return;
+    }
+
+    QStringList target_items;
+    target_items << "ON" << "OFF";
+    bool state_ok;
+    QString selected_state = QInputDialog::getItem(this, "IO Target", "Choose target state", target_items, 0, false, &state_ok);
+    if(!state_ok) {
+        return;
+    }
+
+    ui->task_detail->addIO(selected_module.toStdString(), selected_interface.toStdString(), selected_state == "ON");
+}
+
 
 void TaskWidget::on_add_point_button_clicked()
 {
@@ -79,7 +152,7 @@ void TaskWidget::on_add_group_button_clicked()
         auto model = qobject_cast<QStandardItemModel *>(ui->task_detail->model());
         if(model != nullptr) {
             for(int i = 0; i < model->rowCount(); ++i) {
-                if(model->item(i)->text() == newGroupName && model->item(i, 1) != nullptr && !model->item(i, 1)->text().isEmpty()) {
+                if(model->item(i)->text() == newGroupName && getTaskActionType(model->item(i, 0)) == TaskActionTypeEnum::Group) {
                     QMessageBox::warning(this, "Warning", "Name Repetition with other action");
                     return;
                 }
@@ -101,21 +174,47 @@ void TaskWidget::on_execute_button_clicked()
         return;
     }
     for(int i = 0; i < editingTask->rowCount(); ++i) {
-        auto name = editingTask->item(i)->text().toStdString();
-        if (editingTask->item(i, 1) != nullptr && !editingTask->item(i, 1)->text().isEmpty()) {
-            std::unique_ptr<GroupTask> group = std::make_unique<GroupTask>(name, editingTask->item(i, 1)->text().toInt());
-            for(int j = 0; j < editingTask->item(i)->rowCount(); ++j) {
-                auto point_name = editingTask->item(i)->child(j)->text().toStdString();
+        auto* action_item = editingTask->item(i, 0);
+        auto name = action_item->text().toStdString();
+        switch (getTaskActionType(action_item)) {
+        case TaskActionTypeEnum::Group: {
+            std::unique_ptr<GroupTask> group = std::make_unique<GroupTask>(name, editingTask->item(i, 2)->text().toInt());
+            for(int j = 0; j < action_item->rowCount(); ++j) {
+                auto* child_item = action_item->child(j, 0);
+                if (child_item == nullptr) {
+                    continue;
+                }
+                if (getTaskActionType(child_item) != TaskActionTypeEnum::Point) {
+                    QMessageBox::warning(this, "Unsupported action", "Only point actions are supported inside groups currently.");
+                    return;
+                }
+                auto point_name = child_item->text().toStdString();
                 auto p = ui->point_pool->getPoint(point_name);
                 std::unique_ptr<RobotTask> t = std::make_unique<MoveTask>(p);
                 group->addAction(std::move(t));
             }
             TaskExecutor::instance().addTask(std::move(group));
+            break;
         }
-        else {
+        case TaskActionTypeEnum::Point: {
             auto p = ui->point_pool->getPoint(name);
             std::unique_ptr<RobotTask> t = std::make_unique<MoveTask>(p);
             TaskExecutor::instance().addTask(std::move(t));
+            break;
+        }
+        case TaskActionTypeEnum::IO:
+        {
+            const auto module_name = getTaskIOModule(action_item);
+            const auto interface_name = getTaskIOInterface(action_item);
+            if (module_name.empty() || interface_name.empty()) {
+                QMessageBox::warning(this, "Invalid IO action", "IO action data is incomplete.");
+                return;
+            }
+            const auto target_state = getTaskIOTargetState(action_item);
+            std::unique_ptr<RobotTask> t = std::make_unique<IOTask>(module_name, interface_name, target_state);
+            TaskExecutor::instance().addTask(std::move(t));
+            break;
+        }
         }
     }
     TaskExecutor::instance().start();

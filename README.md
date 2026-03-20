@@ -71,14 +71,14 @@ Install all the dependencies listed above.
 Here is a [demo configuration](https://github.com/jintaoChan/ROS2-general-teaching-pendant/tree/dev/src/fake_ur_config). **Be careful with the package name.**
 
 #### Notes
-a. **Configure yaml for each motor in your robot** in `/driver_config`. Refer [ethercat_driver_ros2](https://icube-robotics.github.io/ethercat_driver_ros2/) for more information.
+#### a. **Configure yaml for each motor in your robot** in `/driver_config`. Refer [ethercat_driver_ros2](https://icube-robotics.github.io/ethercat_driver_ros2/) for more information.
 
-b. **Modify `/config/fake_ur_config.ros2_control.xacro`** 
+#### b. **Modify `/config/fake_ur_config.ros2_control.xacro`** 
 
 Basically you only need to modify the slaves' position and param file's name.
 
 
-c. **Substitude your own urdf file**
+#### c. **Substitude your own urdf file**
 
 Fill in the template here and substitude `/config/fake_ur_config.urdf`.
 
@@ -106,7 +106,7 @@ Fill in the template here and substitude `/config/fake_ur_config.urdf`.
 </robot>
 ````
 
-d. Adjust parameters in `/config/grtp.yaml`
+#### d. **Adjust parameters in `/config/grtp.yaml`**
 
 Parameter table
 
@@ -115,7 +115,7 @@ Parameter table
 - cartesian_limits: cartesian movement limitation.
 - drag_params: drag and drop teaching parameters. D for Damping. M for Assistance. **Strongly recommend to set D to 100 and set M to 0 first. Then slowly adjust them to a reasonable value.**
 
-e. Special driver
+#### e. **Special driver**
 
 For special driver which does not support in ethercat_driver_ros2, you may need to develop your own [ethercat_generic_plugins](https://github.com/ICube-Robotics/ethercat_driver_ros2/tree/jazzy/ethercat_generic_plugins).
 

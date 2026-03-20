@@ -154,7 +154,8 @@ public:
     const std::vector<std::string>& getIOOutputGroupsName() const;
     const std::vector<std::string>& getIOInterfacesName(const std::string& module_name) const;
     bool isIOMonitorable(const std::string& module_name, const std::string& interface_name) const;
-    void registerIOStatusCallback(IOStatusCallback cb);
+    size_t registerIOStatusCallback(IOStatusCallback cb);
+    void unregisterIOStatusCallback(size_t callback_id);
     void setIOState(const std::string& module_name, const std::string& interface_name, bool target_state);
 
 

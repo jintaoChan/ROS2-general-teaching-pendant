@@ -119,7 +119,7 @@ def generate_launch_description():
             description='If true, use simulated clock. Set to false for RViz viewing.'),
         
         node_robot_state_publisher,
-        rviz_node,
+        # rviz_node,
         
         controller_manager_spawner,
         jsb_spawner,

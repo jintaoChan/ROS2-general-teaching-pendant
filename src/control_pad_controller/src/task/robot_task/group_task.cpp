@@ -3,16 +3,22 @@
 
 void GroupTask::execute()
 {
-    current_loop_ = 1;
+    current_loop_ = 0;
     current_index_ = 0;
-    if (!task_list_.empty()) {
+    if (repeat_times_ <= 0 || task_list_.empty()) {
+        return;
+    }
+
+    current_loop_ = 1;
+    if (current_index_ < task_list_.size()) {
         task_list_[current_index_]->execute();
     }
 }
 
 bool GroupTask::isFinished()
 {
-    if (task_list_.empty()) return true;
+    if (repeat_times_ <= 0 || task_list_.empty()) return true;
+    if (current_index_ >= task_list_.size()) return true;
 
     if (task_list_[current_index_]->isFinished()) {
         ++current_index_;
@@ -34,5 +40,7 @@ bool GroupTask::isFinished()
 
 void GroupTask::stop()
 {
-    return task_list_[current_index_]->stop();
+    if (!task_list_.empty() && current_index_ < task_list_.size()) {
+        return task_list_[current_index_]->stop();
+    }
 }

@@ -5,7 +5,7 @@ TaskDetail::TaskDetail(QWidget *parent)
     : TreeViewWithKeyEvent(parent)
 {
     m_RecycleTimeDelegate = new NumericItemDelegate(this);
-    setItemDelegateForColumn(1, m_RecycleTimeDelegate);
+    setItemDelegateForColumn(2, m_RecycleTimeDelegate);
     m_ItemFilterDelegate = new ItemFilterDelegate(this);
     setItemDelegateForColumn(0, m_ItemFilterDelegate);
 
@@ -23,7 +23,13 @@ void TaskDetail::addPoint(const std::string& point_name)
         QMessageBox::warning(this, "Task empty", "Select a task please!");
         return;
     }
-    qobject_cast<QStandardItemModel *>(model())->appendRow(newStdString(point_name, false, true));
+    auto point_item = newStdString(point_name, false, true);
+    setTaskActionType(point_item, TaskActionTypeEnum::Point);
+    qobject_cast<QStandardItemModel *>(model())->appendRow({
+        point_item,
+        newStdString("Point"),
+        newQString("")
+    });
 }
 
 void TaskDetail::addGroup(const std::string &groupName, const int &recycleTimes)
@@ -32,7 +38,32 @@ void TaskDetail::addGroup(const std::string &groupName, const int &recycleTimes)
         QMessageBox::warning(this, "Task empty", "Select a task please!");
         return;
     }
-    qobject_cast<QStandardItemModel *>(model())->appendRow({newStdString(groupName, true, true), newNumber(recycleTimes, true, false)});
+    auto group_item = newStdString(groupName, true, true);
+    setTaskActionType(group_item, TaskActionTypeEnum::Group);
+    qobject_cast<QStandardItemModel *>(model())->appendRow({
+        group_item,
+        newStdString("Group"),
+        newNumber(recycleTimes, true, false)
+    });
+}
+
+void TaskDetail::addIO(const std::string& module_name, const std::string& interface_name, bool target_state)
+{
+    if(model() == nullptr) {
+        QMessageBox::warning(this, "Task empty", "Select a task please!");
+        return;
+    }
+
+    const auto state_text = target_state ? std::string("ON") : std::string("OFF");
+    auto io_item = newStdString(module_name + "/" + interface_name + " -> " + state_text, false, true);
+    setTaskActionType(io_item, TaskActionTypeEnum::IO);
+    setTaskIOConfig(io_item, module_name, interface_name, target_state);
+
+    qobject_cast<QStandardItemModel *>(model())->appendRow({
+        io_item,
+        newStdString("IO"),
+        newQString("")
+    });
 }
 
 void TaskDetail::deleteEvent(QModelIndex index)
@@ -84,5 +115,5 @@ void TaskDetail::dropEvent(QDropEvent *event)
 bool TaskDetail::isGroupRow(int row)
 {
     auto model = qobject_cast<QStandardItemModel *>(this->model());
-    return model->item(row, 1) != nullptr && !model->item(row, 1)->text().isEmpty();
+    return getTaskActionType(model->item(row, 0)) == TaskActionTypeEnum::Group;
 }

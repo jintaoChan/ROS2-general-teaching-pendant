@@ -84,16 +84,9 @@
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_2">
          <item>
-          <widget class="QPushButton" name="add_group_button">
+                    <widget class="QPushButton" name="add_action_button">
            <property name="text">
-            <string>Add Group</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="add_point_button">
-           <property name="text">
-            <string>Add Point</string>
+                        <string>Add Action</string>
            </property>
           </widget>
          </item>

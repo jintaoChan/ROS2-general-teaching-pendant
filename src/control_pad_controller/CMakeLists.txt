@@ -48,6 +48,7 @@ add_library(${PROJECT_NAME}
   ${CMAKE_CURRENT_SOURCE_DIR}/src/task/robot_task/robot_task.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/task/robot_task/move_task.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/task/robot_task/group_task.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/task/robot_task/io_task.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/task/task_executor/task_executor.cpp
 )
 

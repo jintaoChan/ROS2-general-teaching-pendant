@@ -47,8 +47,8 @@ public:
 
     std::vector<std::string> io_input_groups_name_;
     std::vector<std::string> io_output_groups_name_;
-    std::unordered_map<std::string, std::vector<std::string>> io_group_interface_names_;
-    std::unordered_map<std::string, std::unordered_set<std::string>> io_group_state_interfaces_;
+    std::unordered_map<std::string, std::vector<std::string>> io_group_command_interfaces_;
+    std::unordered_map<std::string, std::unordered_set<std::string>> io_group_monitorable_state_interfaces_;
 
     uint64_t controller_update_period_; //ns
     std::vector<std::string> joint_names_;
@@ -84,7 +84,9 @@ public:
     JointsStatus current_joint_status_;
     std::vector<MotorStatusCallback> motor_status_callbacks_;
     IOStatus io_status_;
-    std::vector<IOStatusCallback> io_status_callbacks_;
+    std::unordered_map<size_t, IOStatusCallback> io_status_callbacks_;
+    std::mutex io_status_callbacks_mutex_;
+    size_t io_status_callback_next_id_ = 1;
 
     rclcpp_action::ClientGoalHandle<control_msgs::action::FollowJointTrajectory>::WrappedResult controller_result_;
     bool is_running_ = false;
@@ -122,7 +124,8 @@ public:
     void ioStatusCallback(const control_msgs::msg::DynamicInterfaceGroupValues& msg);
 
     void registerMotorStatusCallback(MotorStatusCallback cb);
-    void registerIOStatusCallback(IOStatusCallback cb);
+    size_t registerIOStatusCallback(IOStatusCallback cb);
+    void unregisterIOStatusCallback(size_t callback_id);
     void setIOState(const std::string& module_name, const std::string& interface_name, bool target_state);
 };
 
@@ -289,16 +292,16 @@ void RobotHandle::Impl::loadIOModulesName()
 
 void RobotHandle::Impl::loadIOInterfacesNameFromService()
 {
-    io_group_interface_names_.clear();
-    io_group_state_interfaces_.clear();
+    io_group_command_interfaces_.clear();
+    io_group_monitorable_state_interfaces_.clear();
 
     for (const auto &group : io_input_groups_name_) {
-        io_group_interface_names_[group] = {};
-        io_group_state_interfaces_[group] = {};
+        io_group_command_interfaces_[group] = {};
+        io_group_monitorable_state_interfaces_[group] = {};
     }
     for (const auto &group : io_output_groups_name_) {
-        io_group_interface_names_[group] = {};
-        io_group_state_interfaces_[group] = {};
+        io_group_command_interfaces_[group] = {};
+        io_group_monitorable_state_interfaces_[group] = {};
     }
 
     auto client = node_->create_client<controller_manager_msgs::srv::ListHardwareInterfaces>(
@@ -332,8 +335,8 @@ void RobotHandle::Impl::loadIOInterfacesNameFromService()
         if (!parse_group_interface(hw_if.name, group, interface_name)) {
             continue;
         }
-        auto group_it = io_group_interface_names_.find(group);
-        if (group_it == io_group_interface_names_.end()) {
+        auto group_it = io_group_command_interfaces_.find(group);
+        if (group_it == io_group_command_interfaces_.end()) {
             continue;
         }
         auto &ordered_interfaces = group_it->second;
@@ -348,8 +351,8 @@ void RobotHandle::Impl::loadIOInterfacesNameFromService()
         if (!parse_group_interface(hw_if.name, group, interface_name)) {
             continue;
         }
-        auto group_it = io_group_state_interfaces_.find(group);
-        if (group_it == io_group_state_interfaces_.end()) {
+        auto group_it = io_group_monitorable_state_interfaces_.find(group);
+        if (group_it == io_group_monitorable_state_interfaces_.end()) {
             continue;
         }
         group_it->second.insert(interface_name);
@@ -824,7 +827,16 @@ void RobotHandle::Impl::ioStatusCallback(const control_msgs::msg::DynamicInterfa
         }
     }
 
-    for(const auto& sc : io_status_callbacks_) {
+    std::vector<IOStatusCallback> callbacks;
+    {
+        std::lock_guard<std::mutex> lock(io_status_callbacks_mutex_);
+        callbacks.reserve(io_status_callbacks_.size());
+        for (const auto& [_, cb] : io_status_callbacks_) {
+            callbacks.push_back(cb);
+        }
+    }
+
+    for(const auto& sc : callbacks) {
         sc(io_status_);
     }
 }
@@ -834,9 +846,18 @@ void RobotHandle::Impl::registerMotorStatusCallback(MotorStatusCallback cb)
     motor_status_callbacks_.push_back(cb);
 }
 
-void RobotHandle::Impl::registerIOStatusCallback(IOStatusCallback cb)
+size_t RobotHandle::Impl::registerIOStatusCallback(IOStatusCallback cb)
 {
-    io_status_callbacks_.push_back(cb);
+    std::lock_guard<std::mutex> lock(io_status_callbacks_mutex_);
+    const size_t callback_id = io_status_callback_next_id_++;
+    io_status_callbacks_[callback_id] = std::move(cb);
+    return callback_id;
+}
+
+void RobotHandle::Impl::unregisterIOStatusCallback(size_t callback_id)
+{
+    std::lock_guard<std::mutex> lock(io_status_callbacks_mutex_);
+    io_status_callbacks_.erase(callback_id);
 }
 
 void RobotHandle::Impl::setIOState(const std::string &module_name, const std::string &interface_name, bool target_state)
@@ -915,8 +936,8 @@ const std::vector<std::string>& RobotHandle::getIOOutputGroupsName() const
 const std::vector<std::string>& RobotHandle::getIOInterfacesName(const std::string &module_name) const
 {
     static const std::vector<std::string> kEmpty;
-    auto it = impl_->io_group_interface_names_.find(module_name);
-    if (it == impl_->io_group_interface_names_.end()) {
+    auto it = impl_->io_group_command_interfaces_.find(module_name);
+    if (it == impl_->io_group_command_interfaces_.end()) {
         return kEmpty;
     }
     return it->second;
@@ -924,16 +945,21 @@ const std::vector<std::string>& RobotHandle::getIOInterfacesName(const std::stri
 
 bool RobotHandle::isIOMonitorable(const std::string &module_name, const std::string &interface_name) const
 {
-    auto it = impl_->io_group_state_interfaces_.find(module_name);
-    if (it == impl_->io_group_state_interfaces_.end()) {
+    auto it = impl_->io_group_monitorable_state_interfaces_.find(module_name);
+    if (it == impl_->io_group_monitorable_state_interfaces_.end()) {
         return false;
     }
     return it->second.find(interface_name) != it->second.end();
 }
 
-void RobotHandle::registerIOStatusCallback(IOStatusCallback cb)
+size_t RobotHandle::registerIOStatusCallback(IOStatusCallback cb)
 {
-    return impl_->registerIOStatusCallback(cb);
+    return impl_->registerIOStatusCallback(std::move(cb));
+}
+
+void RobotHandle::unregisterIOStatusCallback(size_t callback_id)
+{
+    impl_->unregisterIOStatusCallback(callback_id);
 }
 
 void RobotHandle::setIOState(const std::string &module_name, const std::string &interface_name, bool target_state)

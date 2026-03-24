@@ -17,7 +17,7 @@ TaskWidget::TaskWidget(SettingPanel* setting_panel, QWidget *parent)
     , setting_panel_(setting_panel)
 {
     ui->setupUi(this);
-    connect(ui->task_list, &QTreeView::doubleClicked, this, &TaskWidget::on_task_item_clicked);
+    connect(ui->task_list, &QTreeView::doubleClicked, this, &TaskWidget::handleTaskItemDoubleClicked);
     connect(ui->task_list, &TaskList::TaskDeleted, ui->task_detail, &TaskDetail::TaskDeleted);
     connect(ui->point_pool, &PointPoolWidget::CallTaskListToCheckIfContainThisPoint, ui->task_list, &TaskList::CheckTaskListIfContainThisPoint);
     connect(ui->task_list, &TaskList::ConfirmPointPoolToDeletedPoint, ui->point_pool, static_cast<void(PointPoolWidget::*)(const std::string&)>(&PointPoolWidget::deletePoint));
@@ -45,7 +45,7 @@ void TaskWidget::addPointFromControlPad(const TargetPointInfo &p)
     ui->point_pool->addPoint(p);
 }
 
-void TaskWidget::on_task_item_clicked(const QModelIndex &index) {
+void TaskWidget::handleTaskItemDoubleClicked(const QModelIndex &index) {
     auto model = qobject_cast<QStandardItemModel *>(ui->task_list->model());
     QStandardItem *item = model->itemFromIndex(index);
     if (item->column() == 0) {
@@ -74,9 +74,9 @@ void TaskWidget::on_add_action_button_clicked()
     }
 
     if (selectedItem == "Point") {
-        on_add_point_button_clicked();
+        addPointAction();
     } else if (selectedItem == "Group") {
-        on_add_group_button_clicked();
+        addGroupAction();
     } else if (selectedItem == "IO") {
         addIOActionByDialog();
     }
@@ -135,7 +135,7 @@ void TaskWidget::addIOActionByDialog()
 }
 
 
-void TaskWidget::on_add_point_button_clicked()
+void TaskWidget::addPointAction()
 {
     QStringList items(ui->point_pool->getPointsName());
     bool ok;
@@ -144,7 +144,7 @@ void TaskWidget::on_add_point_button_clicked()
         ui->task_detail->addPoint(selectedItem.toStdString());
 }
 
-void TaskWidget::on_add_group_button_clicked()
+void TaskWidget::addGroupAction()
 {
     GroupInfoDialog dialog;
     if (dialog.exec() == QDialog::Accepted) {

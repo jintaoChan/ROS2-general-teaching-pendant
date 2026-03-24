@@ -29,6 +29,7 @@ public:
     }
 
     ~TaskExecutor() {
+        thread_lifecycle_running_ = false;
         running_ = false;
         if (worker_thread_.joinable()) {
             if (std::this_thread::get_id() != worker_thread_.get_id()) {

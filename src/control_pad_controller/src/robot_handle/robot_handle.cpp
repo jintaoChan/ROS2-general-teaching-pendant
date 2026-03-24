@@ -82,7 +82,9 @@ public:
 
     JointsMode current_joint_mode_;
     JointsStatus current_joint_status_;
-    std::vector<MotorStatusCallback> motor_status_callbacks_;
+    std::unordered_map<size_t, MotorStatusCallback> motor_status_callbacks_;
+    std::mutex motor_status_callbacks_mutex_;
+    size_t motor_status_callback_next_id_ = 1;
     IOStatus io_status_;
     std::unordered_map<size_t, IOStatusCallback> io_status_callbacks_;
     std::mutex io_status_callbacks_mutex_;
@@ -123,7 +125,8 @@ public:
     void motorDriverStatusCallback(const control_msgs::msg::DynamicInterfaceGroupValues& msg);
     void ioStatusCallback(const control_msgs::msg::DynamicInterfaceGroupValues& msg);
 
-    void registerMotorStatusCallback(MotorStatusCallback cb);
+    size_t registerMotorStatusCallback(MotorStatusCallback cb);
+    void unregisterMotorStatusCallback(size_t callback_id);
     size_t registerIOStatusCallback(IOStatusCallback cb);
     void unregisterIOStatusCallback(size_t callback_id);
     void setIOState(const std::string& module_name, const std::string& interface_name, bool target_state);
@@ -791,7 +794,16 @@ void RobotHandle::Impl::motorDriverStatusCallback(const control_msgs::msg::Dynam
         }
     }
 
-    for(const auto& sc : motor_status_callbacks_) {
+    std::vector<MotorStatusCallback> callbacks;
+    {
+        std::lock_guard<std::mutex> lock(motor_status_callbacks_mutex_);
+        callbacks.reserve(motor_status_callbacks_.size());
+        for (const auto& [_, cb] : motor_status_callbacks_) {
+            callbacks.push_back(cb);
+        }
+    }
+
+    for(const auto& sc : callbacks) {
         sc(current_joint_status_);
     }
 }
@@ -841,9 +853,18 @@ void RobotHandle::Impl::ioStatusCallback(const control_msgs::msg::DynamicInterfa
     }
 }
 
-void RobotHandle::Impl::registerMotorStatusCallback(MotorStatusCallback cb)
+size_t RobotHandle::Impl::registerMotorStatusCallback(MotorStatusCallback cb)
 {
-    motor_status_callbacks_.push_back(cb);
+    std::lock_guard<std::mutex> lock(motor_status_callbacks_mutex_);
+    const size_t callback_id = motor_status_callback_next_id_++;
+    motor_status_callbacks_[callback_id] = std::move(cb);
+    return callback_id;
+}
+
+void RobotHandle::Impl::unregisterMotorStatusCallback(size_t callback_id)
+{
+    std::lock_guard<std::mutex> lock(motor_status_callbacks_mutex_);
+    motor_status_callbacks_.erase(callback_id);
 }
 
 size_t RobotHandle::Impl::registerIOStatusCallback(IOStatusCallback cb)
@@ -891,9 +912,14 @@ void RobotHandle::setJointTorqueOffset(const std::string& joint_name, double v){
     impl_->joint_torque_offset_[joint_name].joint_value = v;
 }
 
-void RobotHandle::registerMotorStatusCallback(MotorStatusCallback cb)
+size_t RobotHandle::registerMotorStatusCallback(MotorStatusCallback cb)
 {
-    return impl_->registerMotorStatusCallback(cb);
+    return impl_->registerMotorStatusCallback(std::move(cb));
+}
+
+void RobotHandle::unregisterMotorStatusCallback(size_t callback_id)
+{
+    impl_->unregisterMotorStatusCallback(callback_id);
 }
 
 void RobotHandle::disableMotorDrive()

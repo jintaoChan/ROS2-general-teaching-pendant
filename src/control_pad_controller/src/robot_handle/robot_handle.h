@@ -142,7 +142,8 @@ public:
     void setJointTorqueOffset(const std::string& joint_name, double v);
 
     //CiA402 control
-    void registerMotorStatusCallback(MotorStatusCallback cb);
+    size_t registerMotorStatusCallback(MotorStatusCallback cb);
+    void unregisterMotorStatusCallback(size_t callback_id);
     void disableMotorDrive();
     void clearFault();
     void enableMotorDrive();

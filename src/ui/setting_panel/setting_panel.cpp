@@ -1,5 +1,7 @@
 #include <magic_enum/magic_enum.hpp>
 #include <QMessageBox>
+#include <QHBoxLayout>
+#include <QPointer>
 #include "setting_panel.h"
 #include "ui_setting_panel.h"
 #include "kinematics_plugin.h"
@@ -9,6 +11,12 @@ SettingPanel::SettingPanel(QWidget *parent)
     , ui_(new Ui::SettingPanel)
 {
     ui_->setupUi(this);
+    ui_->horizontalSlider_velocity->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    ui_->horizontalSlider_velocity->setMinimumWidth(140);
+    if (auto* row_layout = this->findChild<QHBoxLayout*>("horizontalLayout")) {
+        row_layout->setStretch(8, 1);
+    }
+
     EmptyOkDoubleValidator * validator = new EmptyOkDoubleValidator(this);
     ui_->lineEdit_step->setValidator(validator);
     ui_->lineEdit_step->setFixedWidth(50);
@@ -42,8 +50,15 @@ SettingPanel::SettingPanel(QWidget *parent)
     ui_->horizontalSlider_velocity->setValue(0);
     ui_->drag_button->setEnabled(false);
 
-    RobotHandle::instance().registerMotorStatusCallback([this](JointsStatus state) {
-        QMetaObject::invokeMethod(this, [this, state]() {
+    QPointer<SettingPanel> self(this);
+    motor_status_callback_id_ = RobotHandle::instance().registerMotorStatusCallback([self](JointsStatus state) {
+        if (!self) {
+            return;
+        }
+        QMetaObject::invokeMethod(self, [self, state]() {
+            if (!self) {
+                return;
+            }
             bool is_enabled = true;
             bool is_in_error = false;
             for(const auto& s: state) {
@@ -54,9 +69,8 @@ SettingPanel::SettingPanel(QWidget *parent)
                     is_enabled = false;
                 }
             }
-            is_enabled_ = is_enabled;
-            is_in_error_ = is_in_error;
-            ;
+            self->is_enabled_ = is_enabled;
+            self->is_in_error_ = is_in_error;
         }, Qt::QueuedConnection);
     });
 
@@ -67,6 +81,10 @@ SettingPanel::SettingPanel(QWidget *parent)
 
 SettingPanel::~SettingPanel()
 {
+    if (motor_status_callback_id_.has_value()) {
+        RobotHandle::instance().unregisterMotorStatusCallback(motor_status_callback_id_.value());
+        motor_status_callback_id_ = std::nullopt;
+    }
     delete ui_;
 }
 

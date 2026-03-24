@@ -1,4 +1,5 @@
 #include <QTabWidget>
+#include <QGridLayout>
 #include "main_window.h"
 #include "ui_main_window.h"
 #include "control_pad.h"
@@ -15,30 +16,30 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    QWidget *central = new QWidget(this);
-    setCentralWidget(central);
+    QWidget* central = ui->centralwidget;
+    QGridLayout* main_layout = qobject_cast<QGridLayout*>(central->layout());
+    if(main_layout == nullptr) {
+        main_layout = new QGridLayout(central);
+    }
 
-    QGridLayout* main_layout = new QGridLayout(ui->centralwidget);
+    QTabWidget* tab_widget = new QTabWidget(central);
 
-    QTabWidget* tab_widget = new QTabWidget(ui->centralwidget);
-
-    SettingPanel* setting_pannel = new SettingPanel(ui->centralwidget);
-    ControlPad* control_pad = new ControlPad(setting_pannel, ui->centralwidget);
+    SettingPanel* setting_pannel = new SettingPanel(central);
+    ControlPad* control_pad = new ControlPad(setting_pannel, central);
     tab_widget->addTab(control_pad, "Move");
-    TaskWidget* task_widget = new TaskWidget(setting_pannel, ui->centralwidget);
+    TaskWidget* task_widget = new TaskWidget(setting_pannel, central);
     tab_widget->addTab(task_widget, "Task");
-    SettingPage* setting_page = new SettingPage(setting_pannel, ui->centralwidget);
+    SettingPage* setting_page = new SettingPage(setting_pannel, central);
     tab_widget->addTab(setting_page, "Setting");
-    PlotPage* plot_page = new PlotPage(10000, ui->centralwidget);
+    PlotPage* plot_page = new PlotPage(10000, central);
     tab_widget->addTab(plot_page, "Plot");
     IOPanel* io_panel = new IOPanel();
     tab_widget->addTab(io_panel, "IO");
 
 
-    main_layout->addWidget(tab_widget);
-    main_layout->addWidget(setting_pannel);
-
-    central->setLayout(main_layout);
+    main_layout->addWidget(tab_widget, 0, 0);
+    main_layout->addWidget(setting_pannel, 1, 0);
+    main_layout->setRowStretch(0, 1);
 
     connect(control_pad, &ControlPad::storeCurrentPointToPointPool, task_widget, &TaskWidget::addPointFromControlPad);
 }

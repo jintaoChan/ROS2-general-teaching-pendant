@@ -25,7 +25,7 @@ public:
     }
 
     static void destroy() {
-        m_Instance.release();
+        m_Instance.reset();
     }
 
 protected:

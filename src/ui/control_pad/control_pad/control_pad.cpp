@@ -22,7 +22,7 @@ ControlPad::ControlPad(SettingPanel* setting_panel, QWidget *parent)
     auto cartesianPad = new CartesianPad(this);
     connect(cartesianPad, &CartesianPad::MoveButtonClicked, this, [this](MoveButtonType type, MoveButtonEvent event, size_t idx){emit MoveCommander(type, event, idx);});
     hlayout->addWidget(cartesianPad);
-    QVBoxLayout* vlayout = new QVBoxLayout(this);
+    QVBoxLayout* vlayout = new QVBoxLayout();
 
     JointGroupWidget* jg = new JointGroupWidget("tmp group", this);
     auto joints = robot_des.getJointsName();

@@ -9,7 +9,7 @@ ToolFrameWidget::ToolFrameWidget(QWidget *parent)
     QVBoxLayout* v_layout = new QVBoxLayout(this);
 
     auto add_dof = [&](const QString& label_name) {
-        QHBoxLayout* layout = new QHBoxLayout(this);
+        QHBoxLayout* layout = new QHBoxLayout();
         QLabel* label = new QLabel(label_name, this);
         DoubleClickLineEdit* edit = new DoubleClickLineEdit(this);
         layout->addWidget(label);
@@ -36,8 +36,6 @@ ToolFrameWidget::ToolFrameWidget(QWidget *parent)
     add_dof("rx");
     add_dof("ry");
     add_dof("rz");
-
-    setLayout(v_layout);
 }
 
 void ToolFrameWidget::setValue(const double &x, const double &y, const double &z, const double &rx, const double &ry, const double &rz)

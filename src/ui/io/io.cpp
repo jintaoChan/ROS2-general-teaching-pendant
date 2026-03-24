@@ -2,6 +2,7 @@
 #include <QStyle>
 #include <QLayout>
 #include <QDebug>
+#include <QPointer>
 
 #include <chrono>
 
@@ -151,18 +152,25 @@ IOPanel::IOPanel(QWidget *parent) : QWidget(parent) {
     
     scroll_area_->setWidget(container_);
     main_layout->addWidget(scroll_area_);
-    io_status_callback_id_ = RobotHandle::instance().registerIOStatusCallback([this](IOStatus state){
+    QPointer<IOPanel> self(this);
+    io_status_callback_id_ = RobotHandle::instance().registerIOStatusCallback([self](IOStatus state){
+        if (!self) {
+            return;
+        }
         {
-            std::lock_guard<std::mutex> lock(pending_state_mutex_);
-            pending_state_ = std::move(state);
+            std::lock_guard<std::mutex> lock(self->pending_state_mutex_);
+            self->pending_state_ = std::move(state);
         }
 
-        if (update_scheduled_.exchange(true)) {
+        if (self->update_scheduled_.exchange(true)) {
             return;
         }
 
-        QMetaObject::invokeMethod(this, [this]() {
-            flushPendingState();
+        QMetaObject::invokeMethod(self, [self]() {
+            if (!self) {
+                return;
+            }
+            self->flushPendingState();
         }, Qt::QueuedConnection);
     });
 

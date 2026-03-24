@@ -4,6 +4,7 @@
 #include <QDoubleValidator>
 #include <QWidget>
 #include <QTimer>
+#include <optional>
 #include "robot_handle.h"
 
 namespace Ui {
@@ -38,6 +39,7 @@ private:
     ControlCoordinateSystemType control_coordinate_system_type_;
     int previous_coordinate_index_;
     QTimer* timer_;
+    std::optional<size_t> motor_status_callback_id_;
 
     bool is_enabled_;
     bool is_in_error_;

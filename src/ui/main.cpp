@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QTimer>
 #include <rclcpp/rclcpp.hpp>
 #include "main_window.h"
 #include "robot_handle.h"
@@ -29,14 +30,30 @@ int main(int argc, char *argv[])
     PointPool::init();
     TaskExecutor::init();
 
-    QApplication a(argc, argv);
-    MainWindow w;
-    w.show();
-    a.exec();
+    {
+        QApplication a(argc, argv);
+        MainWindow w;
+        w.show();
 
-    rclcpp::shutdown();
+        QTimer ros_guard;
+        QObject::connect(&ros_guard, &QTimer::timeout, [&a]() {
+            if (!rclcpp::ok()) {
+                a.quit();
+            }
+        });
+        ros_guard.start(100);
+
+        a.exec();
+    }
+
+    if (rclcpp::ok()) {
+        rclcpp::shutdown();
+    }
+    TaskExecutor::destroy();
+    PointPool::destroy();
     RobotHandle::destroy();
     KinematicsPlugin::destroy();
+    main_exec.cancel();
     main_exec_thread.join();
     return 0;
 }

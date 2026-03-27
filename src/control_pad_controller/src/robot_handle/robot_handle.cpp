@@ -111,7 +111,7 @@ public:
     DriverState getDriverState(uint16_t status_word);
     uint16_t ciA402Transition(DriverState state, uint16_t control_word);
     void sendDriverControlWord(const uint16_t& cw);
-    void switchDriverMode(const int8_t& mode);
+    void switchDriverMode(DriverMode mode);
     template<typename T>
     void sendDriverControlMessage(const std::string& name, const T& val);
     void enableMotorDrive();
@@ -430,12 +430,13 @@ void RobotHandle::Impl::sendDriverControlWord(const uint16_t &cw)
     sendDriverControlMessage(CONTROL_WORD, cw);
 }
 
-void RobotHandle::Impl::switchDriverMode(const int8_t &mode)
+void RobotHandle::Impl::switchDriverMode(DriverMode mode)
 {
+    const auto mode_value = static_cast<int8_t>(mode);
     switch(mode){
-    case 8:
+    case DriverMode::CSP:
         moveJointByAbsPosition(current_joint_position_, 1.0);break;
-    case 10:{
+    case DriverMode::CST:{
         auto t_opt = DynamicPlugin::instance().currentPoseStableTorque(current_joint_position_);
         if(!t_opt.has_value()) {
             throw(std::runtime_error("Calculating rnea failed! Unable to switch to effort mode!"));
@@ -447,7 +448,7 @@ void RobotHandle::Impl::switchDriverMode(const int8_t &mode)
     }
 
     }
-    sendDriverControlMessage(MODE, mode);
+    sendDriverControlMessage(MODE, mode_value);
 }
 
 template<typename T>
@@ -503,7 +504,8 @@ void RobotHandle::Impl::moveJointByAbsPosition(const JointsPosition& joint_posit
         }
         p.velocities.push_back(current_joint_position_.at(j_name).joint_info->limits->velocity * velo_ratio);
     }
-    p.time_from_start = rclcpp::Duration(controller_update_period_ / 1e9, controller_update_period_);
+    p.time_from_start = rclcpp::Duration::from_nanoseconds(
+        static_cast<int64_t>(controller_update_period_));
     msg.points.push_back(p);
     moveJointByAbsPosition(msg);
 }
@@ -940,13 +942,13 @@ void RobotHandle::enableMotorDrive()
 void RobotHandle::switchToCSP()
 {
     // ControllerSwitcher::instance().switchToJTC();
-    impl_->switchDriverMode(8);
+    impl_->switchDriverMode(DriverMode::CSP);
 }
 
 void RobotHandle::switchToCST()
 {
     // ControllerSwitcher::instance().switchToEffect();
-    impl_->switchDriverMode(10);
+    impl_->switchDriverMode(DriverMode::CST);
 }
 
 const std::vector<std::string>& RobotHandle::getIOInputGroupsName() const

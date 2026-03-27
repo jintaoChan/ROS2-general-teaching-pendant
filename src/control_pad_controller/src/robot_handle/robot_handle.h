@@ -46,6 +46,11 @@ enum class DriverState
     STATE_FAULT
 };
 
+enum class DriverMode : int8_t {
+    CSP = 8,
+    CST = 10,
+};
+
 enum class ControlCoordinateSystemType {
     Base = 0,
     Tool,

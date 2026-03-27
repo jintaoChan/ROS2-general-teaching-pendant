@@ -6,7 +6,6 @@
 #include <vector>
 #include <unordered_map>
 #include <Eigen/Eigen>
-#include "singleton.hpp"
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/subscription.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
@@ -29,8 +28,9 @@ class ModelInterface;
 class Joint;
 }
 
+class IDynamicsService;
+
 class DataBase;
-template<typename T> class Singleton;
 
 enum class DriverState
 {
@@ -97,9 +97,7 @@ using DragParams = std::unordered_map<DragParamEnum, Eigen::VectorXd>;
 using MotorStatusCallback = std::function<void(JointsStatus)>;
 using IOStatusCallback = std::function<void(IOStatus)>;
 
-class RobotHandle : public Singleton<RobotHandle> {
-    friend class Singleton<RobotHandle>;
-
+class RobotHandle {
 public:
     explicit RobotHandle(const std::shared_ptr<rclcpp::Node>& node);
     ~RobotHandle();
@@ -145,6 +143,7 @@ public:
     void setIsRunning(bool is_running);
     const bool& isRunning() const;
     void setJointTorqueOffset(const std::string& joint_name, double v);
+    void setDynamicsService(IDynamicsService* dynamics);
 
     //CiA402 control
     size_t registerMotorStatusCallback(MotorStatusCallback cb);

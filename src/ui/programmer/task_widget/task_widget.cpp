@@ -10,12 +10,18 @@
 #include "move_task.h"
 #include "group_task.h"
 #include "io_task.h"
+#include <stdexcept>
 
-TaskWidget::TaskWidget(SettingPanel* setting_panel, QWidget *parent)
+TaskWidget::TaskWidget(SettingPanel* setting_panel, IRobotStateProvider* state_port, QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::TaskWidget)
     , setting_panel_(setting_panel)
+    , state_port_(state_port)
 {
+    if (state_port_ == nullptr) {
+        throw std::invalid_argument("TaskWidget requires non-null state port");
+    }
+
     ui->setupUi(this);
     connect(ui->task_list, &QTreeView::doubleClicked, this, &TaskWidget::handleTaskItemDoubleClicked);
     connect(ui->task_list, &TaskList::TaskDeleted, ui->task_detail, &TaskDetail::TaskDeleted);
@@ -85,7 +91,7 @@ void TaskWidget::on_add_action_button_clicked()
 void TaskWidget::addIOActionByDialog()
 {
     std::vector<std::string> modules;
-    const auto& output_modules = RobotHandle::instance().getIOOutputGroupsName();
+    const auto& output_modules = state_port_->getIOOutputGroupsName();
     modules.insert(modules.end(), output_modules.begin(), output_modules.end());
     std::sort(modules.begin(), modules.end());
     modules.erase(std::unique(modules.begin(), modules.end()), modules.end());
@@ -106,7 +112,7 @@ void TaskWidget::addIOActionByDialog()
         return;
     }
 
-    const auto& interfaces = RobotHandle::instance().getIOInterfacesName(selected_module.toStdString());
+    const auto& interfaces = state_port_->getIOInterfacesName(selected_module.toStdString());
     if (interfaces.empty()) {
         QMessageBox::warning(this, "IO", "No IO interface in selected module.");
         return;

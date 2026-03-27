@@ -1,6 +1,6 @@
 #pragma once
 
-#include "robot_handle.h"
+#include "app_ports.h"
 
 #include <controller_manager_msgs/srv/list_hardware_interfaces.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -65,14 +65,14 @@ private:
 class IOPanel : public QWidget {
     Q_OBJECT
 public:
-    explicit IOPanel(QWidget *parent = nullptr);
+    explicit IOPanel(const AppPorts& ports, QWidget *parent = nullptr);
     ~IOPanel() override;
     
     void initLayout(IOStatus state);
 
 private:
     void flushPendingState();
-    void loadOutputInterfaceNamesFromRobotHandle();
+    void loadOutputInterfaceNames();
     bool parseGroupAndInterfaceName(const std::string &full_name,
                                     std::string &group_name,
                                     std::string &interface_name) const;
@@ -87,4 +87,7 @@ private:
     IOStatus pending_state_;
     std::mutex pending_state_mutex_;
     std::atomic<bool> update_scheduled_{false};
+    IRobotStateProvider* state_port_{nullptr};
+    IRobotCommandPort* command_port_{nullptr};
+    IRobotEvents* event_port_{nullptr};
 };

@@ -12,6 +12,7 @@
 #include <cereal/types/base_class.hpp>
 #include <cereal/types/array.hpp>
 #include <cereal/types/vector.hpp>
+#include "app_ports.h"
 #include "simulate_external_force_bar.h"
 
 class ParamIdentification : public QWidget
@@ -19,7 +20,7 @@ class ParamIdentification : public QWidget
     Q_OBJECT
 
 public:
-    explicit ParamIdentification(QWidget *parent = nullptr);
+    explicit ParamIdentification(const AppPorts& ports, QWidget *parent = nullptr);
     ~ParamIdentification();
 
 private:
@@ -34,6 +35,7 @@ private slots:
     void identifyClicked();
 
 private:
+    AppPorts ports_;
     QPushButton* copy_info_button_;
     QPushButton* load_param_button_;
     QPushButton* identify_button_;

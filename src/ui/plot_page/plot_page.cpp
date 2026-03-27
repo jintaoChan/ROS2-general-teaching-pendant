@@ -1,8 +1,8 @@
 #include <QClipboard>
 #include "plot_page.h"
-#include "robot_handle.h"
+#include <stdexcept>
 
-PlotPage::PlotPage(size_t window_size, QWidget *parent)
+PlotPage::PlotPage(size_t window_size, IRobotStateProvider* state_port, QWidget *parent)
     :
     QWidget{parent},
     window_size_{window_size},
@@ -12,8 +12,13 @@ PlotPage::PlotPage(size_t window_size, QWidget *parent)
     save_button_(new QPushButton(this)),
     freeze_button_(new QPushButton(this)),
     clear_button_(new QPushButton(this)),
-    combobox_(new QComboBox(this))
+    combobox_(new QComboBox(this)),
+    state_port_{state_port}
 {
+    if (state_port_ == nullptr) {
+        throw std::invalid_argument("PlotPage requires non-null state port");
+    }
+
     auto type_list = magic_enum::enum_values<DataTypeEnum>();
     for(const auto& t: type_list) {
         auto t_name = std::string(magic_enum::enum_name(t));
@@ -58,8 +63,8 @@ void PlotPage::switchGraphContent(const QString &type_name)
 {
     clearGraphs();
     auto type = magic_enum::enum_cast<DataTypeEnum>(type_name.toStdString()).value();
-    auto joint_nums = RobotHandle::instance().getJointNums();
-    auto joint_names = RobotHandle::instance().getJointsName();
+    auto joint_nums = state_port_->getJointNums();
+    auto joint_names = state_port_->getJointsName();
     size_t rows = std::ceil(std::sqrt(joint_nums));
     size_t cols = std::ceil(double(joint_nums) / rows);
 

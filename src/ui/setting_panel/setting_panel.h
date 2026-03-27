@@ -5,7 +5,7 @@
 #include <QWidget>
 #include <QTimer>
 #include <optional>
-#include "robot_handle.h"
+#include "app_ports.h"
 
 namespace Ui {
 class SettingPanel;
@@ -16,7 +16,7 @@ class SettingPanel : public QWidget
     Q_OBJECT
 
 public:
-    explicit SettingPanel(QWidget *parent = nullptr);
+    explicit SettingPanel(const AppPorts& ports, QWidget *parent = nullptr);
     ~SettingPanel();
 
 public:
@@ -40,6 +40,9 @@ private:
     int previous_coordinate_index_;
     QTimer* timer_;
     std::optional<size_t> motor_status_callback_id_;
+    IRobotStateProvider* state_port_{nullptr};
+    IRobotCommandPort* command_port_{nullptr};
+    IRobotEvents* event_port_{nullptr};
 
     bool is_enabled_;
     bool is_in_error_;

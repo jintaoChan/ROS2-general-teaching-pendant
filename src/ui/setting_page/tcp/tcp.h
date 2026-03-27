@@ -10,7 +10,7 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <kdl/frames.hpp>
-#include "robot_handle.h"
+#include "app_ports.h"
 #include "tool_frame_widget.h"
 
 class ListItemWidget : public QWidget {
@@ -138,7 +138,7 @@ class TCP : public QWidget
 {
     Q_OBJECT
 public:
-    explicit TCP(QWidget *parent = nullptr);
+    explicit TCP(const AppPorts& ports, QWidget *parent = nullptr);
     ~TCP();
 
     bool eventFilter(QObject* obj, QEvent* event);
@@ -156,6 +156,7 @@ private:
 private:
     Ui::TCP *ui_;
     const ToolInfo& tool_info_;
+    AppPorts ports_;
     QButtonGroup* check_box_group_;
     ToolFrameWidget* tool_frame_widget_;
     ListItemWidget* current_selected_tool{nullptr};

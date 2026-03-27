@@ -124,6 +124,6 @@ def generate_launch_description():
         controller_manager_spawner,
         jsb_spawner,
         cia402_spawner,
-        gpio_spawner,
+        # gpio_spawner,
         delayed_jtc_spawner, 
     ])

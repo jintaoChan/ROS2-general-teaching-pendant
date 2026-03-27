@@ -9,7 +9,7 @@
 #include "move_button.h"
 #include "cartesian_pad.h"
 #include "setting_panel.h"
-#include "robot_handle.h"
+#include "robot_ports.h"
 
 namespace Ui {
 class ControlPad;
@@ -20,7 +20,10 @@ class ControlPad : public QWidget
     Q_OBJECT
 
 public:
-    explicit ControlPad(SettingPanel* setting_panel,  QWidget *parent = nullptr);
+    explicit ControlPad(
+        SettingPanel* setting_panel,
+        IRobotStateProvider* state_port,
+        QWidget *parent = nullptr);
     ~ControlPad();
 
 public:
@@ -40,6 +43,7 @@ private:
     QTimer* timer_;
     JointsPosition current_position_;
     SettingPanel* setting_panel_;
+    IRobotStateProvider* state_port_{nullptr};
 };
 
 #endif // CONTROL_PAD_H

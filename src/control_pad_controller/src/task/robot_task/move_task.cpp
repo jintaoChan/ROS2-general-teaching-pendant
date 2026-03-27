@@ -1,16 +1,16 @@
 #include "move_task.h"
-#include "kinematics_plugin.h"
+#include "motion_plugin.h"
 
 void MoveTask::execute()
 {
     try{
         switch(target_.MoveType) {
         case(MoveTypeEnum::JOINT): {
-            KinematicsPlugin::instance().moveJointPositionAbsolutely(target_.JointValues,target_.VelocityRatio);
+            MotionPlugin::instance().moveJointPositionAbsolutely(target_.JointValues,target_.VelocityRatio);
             break;
         }
         case(MoveTypeEnum::POSE): {
-            KinematicsPlugin::instance().moveToPose(target_.Pose, target_.VelocityRatio);
+            MotionPlugin::instance().moveToPose(target_.Pose, target_.VelocityRatio);
             break;
         }
         }
@@ -23,10 +23,10 @@ void MoveTask::execute()
 
 bool MoveTask::isFinished()
 {
-    return !KinematicsPlugin::instance().isRunning();
+    return !MotionPlugin::instance().isRunning();
 }
 
 void MoveTask::stop()
 {
-    return KinematicsPlugin::instance().stop();
+    return MotionPlugin::instance().stop();
 }

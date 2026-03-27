@@ -5,6 +5,7 @@
 #include <QPointer>
 
 #include <chrono>
+#include <stdexcept>
 
 IOPointWidget::IOPointWidget(const QString &name, IOType type, QWidget *parent)
     : QWidget(parent), type_(type)
@@ -111,7 +112,12 @@ void IOModuleCard::setIOMonitorable(const QString &io_name, bool monitorable)
     }
 }
 
-IOPanel::IOPanel(QWidget *parent) : QWidget(parent) {
+IOPanel::IOPanel(const AppPorts& ports, QWidget *parent)
+    : QWidget(parent), state_port_(ports.state), command_port_(ports.command), event_port_(ports.events) {
+    if (state_port_ == nullptr || command_port_ == nullptr || event_port_ == nullptr) {
+        throw std::invalid_argument("IOPanel requires non-null state/command/event ports");
+    }
+
     QVBoxLayout* main_layout = new QVBoxLayout(this);
 
     auto createLegendItem = [](const QString &color, const QString &text) {
@@ -148,12 +154,12 @@ IOPanel::IOPanel(QWidget *parent) : QWidget(parent) {
     QGridLayout* flow_layout = new QGridLayout(container_);
     container_->setLayout(flow_layout);
 
-    loadOutputInterfaceNamesFromRobotHandle();
+    loadOutputInterfaceNames();
     
     scroll_area_->setWidget(container_);
     main_layout->addWidget(scroll_area_);
     QPointer<IOPanel> self(this);
-    io_status_callback_id_ = RobotHandle::instance().registerIOStatusCallback([self](IOStatus state){
+    io_status_callback_id_ = event_port_->registerIOStatusCallback([self](IOStatus state){
         if (!self) {
             return;
         }
@@ -179,23 +185,23 @@ IOPanel::IOPanel(QWidget *parent) : QWidget(parent) {
 IOPanel::~IOPanel()
 {
     if (io_status_callback_id_.has_value()) {
-        RobotHandle::instance().unregisterIOStatusCallback(io_status_callback_id_.value());
+        event_port_->unregisterIOStatusCallback(io_status_callback_id_.value());
         io_status_callback_id_ = std::nullopt;
     }
 }
 
-void IOPanel::loadOutputInterfaceNamesFromRobotHandle()
+void IOPanel::loadOutputInterfaceNames()
 {
-    const auto &output_groups = RobotHandle::instance().getIOOutputGroupsName();
+    const auto &output_groups = state_port_->getIOOutputGroupsName();
     output_group_interface_names_.clear();
     output_group_no_feedback_interfaces_.clear();
     for (const auto &group : output_groups) {
-        const auto &ordered_interfaces = RobotHandle::instance().getIOInterfacesName(group);
+        const auto &ordered_interfaces = state_port_->getIOInterfacesName(group);
         auto &display_interfaces = output_group_interface_names_[group];
         auto &no_feedback_interfaces = output_group_no_feedback_interfaces_[group];
         for (const auto &interface_name : ordered_interfaces) {
             display_interfaces.push_back(interface_name);
-            if (!RobotHandle::instance().isIOMonitorable(group, interface_name)) {
+            if (!state_port_->isIOMonitorable(group, interface_name)) {
                 no_feedback_interfaces.push_back(interface_name);
             }
         }
@@ -251,8 +257,8 @@ void IOPanel::flushPendingState()
 void IOPanel::initLayout(IOStatus state) {
     static std::once_flag flag;
     std::call_once(flag, [&](){
-        const auto& input_names = RobotHandle::instance().getIOInputGroupsName();
-        const auto& output_names = RobotHandle::instance().getIOOutputGroupsName();
+        const auto& input_names = state_port_->getIOInputGroupsName();
+        const auto& output_names = state_port_->getIOOutputGroupsName();
         IOType t;
         size_t card_num = 0;
         for(const auto& m: state) {
@@ -266,10 +272,10 @@ void IOPanel::initLayout(IOStatus state) {
             if (t == IOType::OUTPUT) {
                 const QString module_name = QString::fromStdString(m.first);
                 connect(card, &IOModuleCard::ioToggled, this,
-                        [module_name](const QString &io_name, bool target_state) {
-                            RobotHandle::instance().setIOState(module_name.toStdString(),
-                                                               io_name.toStdString(),
-                                                               target_state);
+                        [this, module_name](const QString &io_name, bool target_state) {
+                            command_port_->setIOState(module_name.toStdString(),
+                                                      io_name.toStdString(),
+                                                      target_state);
                         });
             }
             const bool is_output_module =

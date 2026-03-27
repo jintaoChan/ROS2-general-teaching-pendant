@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
     auto robot_handle_node = rclcpp::Node::make_shared("robot_handle", node_options);
     // auto kinematics_plugin_node = rclcpp::Node::make_shared("kinematics_plugin", node_options);
 
-    RobotHandle::init(robot_handle_node);
+    auto robot_handle = std::make_unique<RobotHandle>(robot_handle_node);
 
     rclcpp::executors::MultiThreadedExecutor exec;
     exec.add_node(robot_handle_node);

@@ -1,14 +1,26 @@
 #include "io_task.h"
-#include "robot_handle.h"
+
+IRobotCommandPort* IOTask::command_port_ = nullptr;
+IRobotEvents* IOTask::event_port_ = nullptr;
+
+void IOTask::configurePorts(IRobotCommandPort* command_port, IRobotEvents* event_port)
+{
+    command_port_ = command_port;
+    event_port_ = event_port;
+}
 
 void IOTask::execute()
 {
     if (!is_executing_) {
         try {
+            if (command_port_ == nullptr || event_port_ == nullptr) {
+                throw(std::runtime_error("IOTask ports are not configured"));
+            }
+
             // Capture a weak_ptr to the alive sentinel so the callback becomes
             // a no-op automatically once this IOTask instance is destroyed.
             std::weak_ptr<std::atomic<bool>> weak_alive = alive_;
-            callback_id_ = RobotHandle::instance().registerIOStatusCallback(
+            callback_id_ = event_port_->registerIOStatusCallback(
                 [this, weak_alive](const IOStatus& io_status) {
                     auto alive = weak_alive.lock();
                     if (!alive || !(*alive)) return;
@@ -17,7 +29,7 @@ void IOTask::execute()
             );
 
             // Set the IO state to target value
-            RobotHandle::instance().setIOState(module_name_, interface_name_, target_state_);
+            command_port_->setIOState(module_name_, interface_name_, target_state_);
 
             is_executing_ = true;
         }
@@ -37,7 +49,9 @@ bool IOTask::isFinished()
 void IOTask::stop()
 {
     if (callback_id_.has_value()) {
-        RobotHandle::instance().unregisterIOStatusCallback(callback_id_.value());
+        if (event_port_ != nullptr) {
+            event_port_->unregisterIOStatusCallback(callback_id_.value());
+        }
         callback_id_ = std::nullopt;
     }
 

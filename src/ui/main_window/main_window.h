@@ -2,6 +2,7 @@
 #define MAIN_WINDOW_H
 
 #include <QMainWindow>
+#include "app_ports.h"
 
 namespace Ui {
 class MainWindow;
@@ -12,7 +13,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = nullptr);
+    explicit MainWindow(const AppPorts& ports, QWidget *parent = nullptr);
     ~MainWindow();
 
 private:

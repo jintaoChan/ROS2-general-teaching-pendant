@@ -5,16 +5,22 @@
 #include <QMessageBox>
 #include <QKeyEvent>
 #include <QInputDialog>
-#include "kinematics_plugin.h"
 #include "tcp.h"
 #include "ui_tcp.h"
 #include "point_pool.h"
+#include "motion_plugin.h"
+#include <stdexcept>
 
-TCP::TCP(QWidget *parent)
+TCP::TCP(const AppPorts& ports, QWidget *parent)
     : QWidget{parent},
     ui_(new Ui::TCP),
-    tool_info_(RobotHandle::instance().getRobotArmToolInfo())
+    tool_info_(ports.state->getRobotArmToolInfo()),
+    ports_(ports)
 {
+    if (ports_.state == nullptr || ports_.command == nullptr) {
+        throw std::invalid_argument("TCP requires non-null state and command ports");
+    }
+
     ui_->setupUi(this);
     ui_->tcp_list->installEventFilter(this);
 
@@ -35,15 +41,15 @@ TCP::TCP(QWidget *parent)
         [this](const auto& x, const auto& y, const auto& z, const auto& rx, const auto& ry, const auto& rz){
         auto frame = KDL::Frame(KDL::Rotation::EulerZYX(rz, ry, rx), KDL::Vector(x, y, z));
         auto selected_tool_name = current_selected_tool->text().toStdString();
-        RobotHandle::instance().deleteToolFrame(selected_tool_name);
-        RobotHandle::instance().addToolFrame(selected_tool_name, frame);
-        KinematicsPlugin::instance().refreshCoordinateSystem();
+        ports_.command->deleteToolFrame(selected_tool_name);
+        ports_.command->addToolFrame(selected_tool_name, frame);
+        MotionPlugin::instance().refreshCoordinateSystem();
     });
 
 
     check_box_group_ = new QButtonGroup(this);
     check_box_group_->setExclusive(true);
-    current_tool_name_ = RobotHandle::instance().getCurrentToolFrame();
+    current_tool_name_ = ports_.state->getCurrentToolFrame();
     for(const auto& t : tool_info_) {
         addNewToolFrame(QString::fromStdString(t.first));
     }
@@ -63,7 +69,7 @@ bool TCP::eventFilter(QObject* obj, QEvent* event)
             auto item = ui_->tcp_list->currentItem();
             if (item) {
                 auto widget = (ListItemWidget*)ui_->tcp_list->itemWidget(item);
-                RobotHandle::instance().deleteToolFrame(widget->text().toStdString());
+                ports_.command->deleteToolFrame(widget->text().toStdString());
                 delete ui_->tcp_list->takeItem(ui_->tcp_list->row(item));
                 widget->deleteLater();
             }
@@ -98,7 +104,7 @@ ListItemWidget* TCP::addNewToolFrame(const QString &name, const KDL::Frame& fram
                 widget->deleteLater();
             }
             else {
-                RobotHandle::instance().addToolFrame(new_name.toStdString(), frame);
+                ports_.command->addToolFrame(new_name.toStdString(), frame);
             }
         }
         else {
@@ -109,15 +115,15 @@ ListItemWidget* TCP::addNewToolFrame(const QString &name, const KDL::Frame& fram
             }
             else {
                 const auto& src_frame = tool_info_.at(old_name.toStdString());
-                RobotHandle::instance().deleteToolFrame(old_name.toStdString());
-                RobotHandle::instance().addToolFrame(new_name.toStdString(), src_frame);
+                ports_.command->deleteToolFrame(old_name.toStdString());
+                ports_.command->addToolFrame(new_name.toStdString(), src_frame);
             }
         }
     });
-    connect(widget->getCheckBox(), &QCheckBox::clicked, this, [widget](bool checked){
+    connect(widget->getCheckBox(), &QCheckBox::clicked, this, [this, widget](bool checked){
         if(checked) {
-            RobotHandle::instance().setCurrentToolFrame(widget->text().toStdString());
-            KinematicsPlugin::instance().refreshCoordinateSystem();
+            ports_.command->setCurrentToolFrame(widget->text().toStdString());
+            MotionPlugin::instance().refreshCoordinateSystem();
         }
     });
     check_box_group_->addButton(widget->getCheckBox());
@@ -148,7 +154,7 @@ void TCP::on_calibrate_button_clicked()
         for(const auto& s : selected) {
             points[s] = PointPool::instance().getPoint((s));
         }
-        auto result = KinematicsPlugin::instance().tcpCalibration(points);
+        auto result = MotionPlugin::instance().tcpCalibration(points);
         auto widget = addNewToolFrame("", result);
         widget->startEdit();
     }

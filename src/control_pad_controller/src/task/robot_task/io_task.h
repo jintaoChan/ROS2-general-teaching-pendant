@@ -1,7 +1,7 @@
 #pragma once
 
 #include "robot_task.h"
-#include "robot_handle.h"
+#include "robot_ports.h"
 #include <string>
 #include <functional>
 #include <optional>
@@ -31,6 +31,8 @@ public:
     virtual bool isFinished() override final;
     virtual void stop() override final;
 
+    static void configurePorts(IRobotCommandPort* command_port, IRobotEvents* event_port);
+
 private:
     std::string module_name_;
     std::string interface_name_;
@@ -41,6 +43,9 @@ private:
     // Sentinel shared with the RobotHandle callback: set to false on destruction
     // so the callback becomes a no-op after IOTask is gone.
     std::shared_ptr<std::atomic<bool>> alive_;
+
+    static IRobotCommandPort* command_port_;
+    static IRobotEvents* event_port_;
 
     void onIOStatusUpdate(const IOStatus& io_status);
 };

@@ -9,12 +9,13 @@
 #include <QPushButton>
 #include "database.h"
 #include "plot_widget.h"
+#include "robot_ports.h"
 
 class PlotPage : public QWidget
 {
     Q_OBJECT
 public:
-    explicit PlotPage(size_t window_size, QWidget *parent = nullptr);
+    explicit PlotPage(size_t window_size, IRobotStateProvider* state_port, QWidget *parent = nullptr);
 
 signals:
 
@@ -37,6 +38,7 @@ private:
     QPushButton* clear_button_;
     QComboBox* combobox_;
     QList<PlotWidget*> graph_list_;
+    IRobotStateProvider* state_port_{nullptr};
 };
 
 #endif // PLOT_PAGE_H

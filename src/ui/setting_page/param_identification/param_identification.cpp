@@ -10,15 +10,15 @@
 #include <thread>
 #include <chrono>
 #include <cereal/archives/json.hpp>
+#include <stdexcept>
 
-#include "robot_handle.h"
 #include "database.h"
-#include "dynamic_plugin.h"
-#include "robot_handle.h"
+#include "motion_plugin.h"
 
-ParamIdentification::ParamIdentification(QWidget *parent)
+ParamIdentification::ParamIdentification(const AppPorts& ports, QWidget *parent)
     :
     QWidget(parent),
+    ports_(ports),
     copy_info_button_(new QPushButton(this)),
     load_param_button_(new QPushButton(this)),
     identify_button_(new QPushButton(this)),
@@ -27,6 +27,10 @@ ParamIdentification::ParamIdentification(QWidget *parent)
     base_param_size_layout_(new QHBoxLayout()),
     layout_(new QVBoxLayout())
 {
+    if (ports_.state == nullptr || ports_.command == nullptr) {
+        throw std::invalid_argument("ParamIdentification requires non-null state and command ports");
+    }
+
     base_param_size_title_->setText("Base param size: ");
     base_param_size_layout_->addWidget(base_param_size_title_);
     base_param_size_layout_->addWidget(base_param_size_);
@@ -34,8 +38,8 @@ ParamIdentification::ParamIdentification(QWidget *parent)
     load_param_button_->setText("Load param from file");
     identify_button_->setText("Start identify by a trajectory");
     layout_->addLayout(base_param_size_layout_);
-    for(const auto& n : RobotHandle::instance().getJointsName()) {
-        auto sefb = new SimulateExternalForceBar(QString::fromStdString(n), this);
+    for(const auto& n : ports_.state->getJointsName()) {
+        auto sefb = new SimulateExternalForceBar(QString::fromStdString(n), ports_.command, this);
         sefb_list_.push_back(sefb);
         layout_->addWidget(sefb);
     }
@@ -62,9 +66,9 @@ std::optional<trajectory_msgs::msg::JointTrajectory> ParamIdentification::loadTr
         return std::nullopt;
     }
     std::string line;
-    auto period = RobotHandle::instance().getControllerUpdatePeriod();
+    auto period = ports_.state->getControllerUpdatePeriod();
     size_t index{1};
-    traj.joint_names = RobotHandle::instance().getJointsName();
+    traj.joint_names = ports_.state->getJointsName();
     trajectory_msgs::msg::JointTrajectoryPoint last_p;
     while (std::getline(file, line)) {
         std::istringstream iss(line);
@@ -115,11 +119,11 @@ void ParamIdentification::saveInfoClicked()
             return;
         }
         cereal::JSONOutputArchive ar_out(file);
-        const auto& base = DynamicPlugin::instance().getBaseParams();
-        const auto& friction = DynamicPlugin::instance().getFrictionParams();
-        const auto& Pb = DynamicPlugin::instance().getDepPb();
-        const auto& Pd = DynamicPlugin::instance().getDepPd();
-        const auto& Kd = DynamicPlugin::instance().getDepKd();
+        const auto& base = MotionPlugin::instance().getDynamicsBaseParams();
+        const auto& friction = MotionPlugin::instance().getDynamicsFrictionParams();
+        const auto& Pb = MotionPlugin::instance().getDynamicsDepPb();
+        const auto& Pd = MotionPlugin::instance().getDynamicsDepPd();
+        const auto& Kd = MotionPlugin::instance().getDynamicsDepKd();
         ar_out(CEREAL_NVP(base), CEREAL_NVP(friction), CEREAL_NVP(Pb), CEREAL_NVP(Pd), CEREAL_NVP(Kd));
     }
 }
@@ -140,8 +144,8 @@ void ParamIdentification::loadParamClicked()
         cereal::JSONInputArchive ar_in(file);
         Eigen::MatrixXd base, friction, Pb, Pd, Kd;
         ar_in(CEREAL_NVP(base), CEREAL_NVP(friction), CEREAL_NVP(Pb), CEREAL_NVP(Pd), CEREAL_NVP(Kd));
-        DynamicPlugin::instance().setParams(base, friction, Pb, Pd, Kd);
-        if(DynamicPlugin::instance().isReady()) {
+        MotionPlugin::instance().setDynamicsParams(base, friction, Pb, Pd, Kd);
+        if(MotionPlugin::instance().isDynamicsReady()) {
             emit(identifyFinished());
             std::cout << "Ready to drag!" << std::endl;
         }
@@ -178,15 +182,15 @@ void ParamIdentification::identifyClicked()
                 decltype(sample_start_index) sample_end_index;
 
                 // publish trajectory
-                RobotHandle::instance().moveJointByAbsPosition(traj);
+                ports_.command->moveJointByAbsPosition(traj);
 
                 // wait until RobotHandle reports finished; poll with sleep
-                while (RobotHandle::instance().isRunning()) {
+                while (ports_.state->isRunning()) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 }
 
                 sample_end_index = DataBase::instance().getCurrentIndex();
-                DynamicPlugin::instance().identify(sample_start_index, sample_end_index);
+                MotionPlugin::instance().identify(sample_start_index, sample_end_index);
                 std::cout << "Using points from " << sample_start_index << " to " << sample_end_index << std::endl;
                 // update UI on the GUI thread
                 if (progress) {
@@ -195,7 +199,7 @@ void ParamIdentification::identifyClicked()
                     }, Qt::QueuedConnection);
                 }
                 QMetaObject::invokeMethod(qApp, [this]() {
-                    auto size = DynamicPlugin::instance().getBaseParams().size() + DynamicPlugin::instance().getFrictionParams().size();
+                    auto size = MotionPlugin::instance().getDynamicsBaseParams().size() + MotionPlugin::instance().getDynamicsFrictionParams().size();
                     base_param_size_->setText(QString::number(size));
                     emit(identifyFinished());
                 }, Qt::QueuedConnection);

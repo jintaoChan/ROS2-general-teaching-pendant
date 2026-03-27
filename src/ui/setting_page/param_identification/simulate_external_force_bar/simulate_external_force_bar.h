@@ -6,12 +6,13 @@
 #include <QLabel>
 #include <QSlider>
 #include <QLineEdit>
+#include "robot_ports.h"
 
 class SimulateExternalForceBar : public QWidget
 {
     Q_OBJECT
 public:
-    explicit SimulateExternalForceBar(const QString& joint_name, QWidget *parent = nullptr);
+    explicit SimulateExternalForceBar(const QString& joint_name, IRobotCommandPort* command_port, QWidget *parent = nullptr);
 
 signals:
 
@@ -24,6 +25,7 @@ private:
     QLabel* joint_name_label_;
     QSlider* slider_;
     QLineEdit* torque_editor_;
+    IRobotCommandPort* command_port_{nullptr};
 
 };
 

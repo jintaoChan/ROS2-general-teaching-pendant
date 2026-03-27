@@ -4,10 +4,11 @@
 #include "tcp.h"
 #include "param_identification.h"
 
-SettingPage::SettingPage(SettingPanel* setting_panel, QWidget *parent)
+SettingPage::SettingPage(SettingPanel* setting_panel, const AppPorts& ports, QWidget *parent)
     :
     QWidget{parent},
-    setting_panel_(setting_panel)
+    setting_panel_(setting_panel),
+    ports_(ports)
 {
     layout = new QGridLayout(this);
     list_widget = new QListWidget;
@@ -17,8 +18,8 @@ SettingPage::SettingPage(SettingPanel* setting_panel, QWidget *parent)
 
     stacked_widget = new QStackedWidget;
 
-    TCP* tcp = new TCP(this);
-    ParamIdentification* iden = new ParamIdentification(this);
+    TCP* tcp = new TCP(ports_, this);
+    ParamIdentification* iden = new ParamIdentification(ports_, this);
     stacked_widget->addWidget(tcp);
     stacked_widget->addWidget(iden);
 

@@ -3,7 +3,7 @@
 
 #include <QWidget>
 #include <QStandardItem>
-#include "robot_handle.h"
+#include "robot_ports.h"
 #include "setting_panel.h"
 #include "utils.h"
 
@@ -17,7 +17,7 @@ class TaskWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit TaskWidget(SettingPanel* setting_panel, QWidget *parent = nullptr);
+    explicit TaskWidget(SettingPanel* setting_panel, IRobotStateProvider* state_port, QWidget *parent = nullptr);
     ~TaskWidget();
 
 
@@ -40,6 +40,7 @@ private:
 private:
     Ui::TaskWidget *ui;
     SettingPanel* setting_panel_;
+    IRobotStateProvider* state_port_{nullptr};
 };
 
 #endif // TASK_WIDGET_H

@@ -10,13 +10,19 @@
 #include <iomanip>
 #include <algorithm>
 #include <limits>
+#include <stdexcept>
 
 
 using namespace pinocchio;
 using DependencyAnalysisResult = DynamicPlugin::DependencyAnalysisResult;
 
-DynamicPlugin::DynamicPlugin()
+DynamicPlugin::DynamicPlugin(IRobotStateProvider* state_port)
+    : state_port_(state_port)
 {
+    if (state_port_ == nullptr) {
+        throw std::invalid_argument("DynamicPlugin requires non-null injected robot state port");
+    }
+
     auto urdf_string = AcquireParam<std::string>("/robot_state_publisher", "robot_description").value();
     auto urdf_tree = ::urdf::parseURDF(urdf_string);
 
@@ -45,18 +51,18 @@ void DynamicPlugin::identify(const size_t &db_start_index, const size_t &db_end_
 
     dependenceComputation();
     Eigen::MatrixXd q, v, a, t;
-    auto n = RobotHandle::instance().getJointNums();
+    auto n = state_port_->getJointNums();
     auto db = DataBase::instance().getAllData();
 
     // determine sample count (use minimum across joints to be safe)
     size_t sample_count = std::numeric_limits<size_t>::max();
-    for (const auto &name : RobotHandle::instance().getJointsName()) {
+    for (const auto &name : state_port_->getJointsName()) {
         auto &joint = db.at(name);
         auto q_list = joint.at(DataTypeEnum::POSITION).getSnapShot(db_start_index, db_end_index - db_start_index);
         sample_count = std::min(sample_count, (size_t)q_list.size());
     }
     if (sample_count == std::numeric_limits<size_t>::max() || sample_count == 0) {
-        RCLCPP_WARN(rclcpp::get_logger("DynamicPlugin"), "No samples available for identification");
+        std::cout << "[DynamicPlugin::identify] No samples available for identification" << std::endl;
         return;
     }
 
@@ -68,7 +74,7 @@ void DynamicPlugin::identify(const size_t &db_start_index, const size_t &db_end_
     t = Eigen::MatrixXd(n, sample_count);
 
     size_t row = 0;
-    for (const auto &name : RobotHandle::instance().getJointsName()) {
+    for (const auto &name : state_port_->getJointsName()) {
         auto &joint = db.at(name);
         auto q_list = joint.at(DataTypeEnum::POSITION).getSnapShot(db_start_index, db_end_index);
         auto v_list = joint.at(DataTypeEnum::VELOCITY).getSnapShot(db_start_index, db_end_index);
@@ -130,9 +136,9 @@ std::optional<JointsTorque> DynamicPlugin::rnea(const JointsPosition &q, const J
 {
     try {
         JointsTorque res;
-        static const auto& joint_names = RobotHandle::instance().getJointsName();
-        static const auto& drag_params = RobotHandle::instance().getDragParams();
-        static const auto& external_force = RobotHandle::instance().getCurrentJointEstimatedExternalTorque();
+        const auto& joint_names = state_port_->getJointsName();
+        const auto& drag_params = state_port_->getDragParams();
+        const auto& external_force = state_port_->getCurrentJointEstimatedExternalTorque();
         Eigen::VectorXd eq(nq_), ev(nq_), ea(nq_), eef(nq_);
 
         for(size_t i = 0; i < nq_; ++i) {
@@ -162,11 +168,11 @@ std::optional<JointsTorque> DynamicPlugin::currentPoseStableTorque(const JointsP
     static std::once_flag initialize_zero_flag;
     static JointsAcceleration zero;
     std::call_once(initialize_zero_flag, [&](){
-        for(const auto& n : RobotHandle::instance().getJointsName()) {
+        for(const auto& n : state_port_->getJointsName()) {
             zero[n].joint_value = 0;
         }
     });
-    return DynamicPlugin::instance().rnea(RobotHandle::instance().getCurrentJointPosition(), zero, zero);
+    return rnea(state_port_->getCurrentJointPosition(), zero, zero);
 }
 
 std::pair<std::vector<double>, std::vector<double>>  DynamicPlugin::firstOrderMomentum(const std::vector<double>& q, const std::vector<double>& v, const std::vector<double>& t)
@@ -185,7 +191,7 @@ std::pair<Eigen::VectorXd, Eigen::VectorXd> DynamicPlugin::firstOrderMomentum(
     const Eigen::VectorXd& v,
     const Eigen::VectorXd& t
     ) {
-    const static auto& peroid = RobotHandle::instance().getControllerUpdatePeriod() / 1e9;
+    const double peroid = static_cast<double>(state_port_->getControllerUpdatePeriod()) / 1e9;
     model_.gravity.linear().setZero();
     const static auto zero = Eigen::VectorXd(q.size()).setZero();
     static auto r = zero;
@@ -214,8 +220,16 @@ const bool &DynamicPlugin::isReady() const
 }
 
 const Eigen::MatrixXd& DynamicPlugin::dependenceComputation() {
-    calculateDynamicParamsDependence(1e4, 1e-5);
-    base_params_model_ = ((dep_res_.Pb.transpose() + dep_res_.Kd * dep_res_.Pd.transpose()) * all_params_).eval();
+    dep_res_ = calculateDynamicParamsDependence(1e4, 1e-5);
+
+    const auto lhs = dep_res_.Pb.transpose() + dep_res_.Kd * dep_res_.Pd.transpose();
+    if (lhs.cols() != all_params_.rows()) {
+        throw std::runtime_error(
+            "dependenceComputation dimension mismatch: lhs.cols()=" + std::to_string(lhs.cols()) +
+            ", all_params_.rows()=" + std::to_string(all_params_.rows()));
+    }
+
+    base_params_model_ = (lhs * all_params_).eval();
 
     return base_params_model_;
 }
@@ -224,7 +238,7 @@ const Eigen::MatrixXd &DynamicPlugin::getBaseParams()
 {
     if(!is_ready_) {
         std::cout << "No params available" << std::endl;
-        return Eigen::MatrixXd{};
+        return empty_matrix_;
     }
     return base_params_;
 }
@@ -243,7 +257,7 @@ const Eigen::MatrixXd &DynamicPlugin::getFrictionParams()
 {
     if(!is_ready_) {
         std::cout << "No params available" << std::endl;
-        return Eigen::MatrixXd{};
+        return empty_matrix_;
     }
     return friction_params_;
 }
@@ -252,7 +266,7 @@ const Eigen::MatrixXd &DynamicPlugin::getDepPb()
 {
     if(!is_ready_) {
         std::cout << "No params available" << std::endl;
-        return Eigen::MatrixXd{};
+        return empty_matrix_;
     }
     return dep_res_.Pb;
 }
@@ -261,7 +275,7 @@ const Eigen::MatrixXd &DynamicPlugin::getDepPd()
 {
     if(!is_ready_) {
         std::cout << "No params available" << std::endl;
-        return Eigen::MatrixXd{};
+        return empty_matrix_;
     }
     return dep_res_.Pd;
 }
@@ -270,7 +284,7 @@ const Eigen::MatrixXd &DynamicPlugin::getDepKd()
 {
     if(!is_ready_) {
         std::cout << "No params available" << std::endl;
-        return Eigen::MatrixXd{};
+        return empty_matrix_;
     }
     return dep_res_.Kd;
 }

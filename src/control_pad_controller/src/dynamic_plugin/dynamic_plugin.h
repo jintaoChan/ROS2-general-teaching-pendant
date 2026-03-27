@@ -4,12 +4,10 @@
 #include <pinocchio/algorithm/kinematics.hpp>
 #include <pinocchio/algorithm/regressor.hpp>
 #include <future>
-#include "robot_handle.h"
-#include "singleton.hpp"
+#include "i_dynamics_service.h"
+#include "robot_ports.h"
 
-class DynamicPlugin : public Singleton<DynamicPlugin>{
-    friend class Singleton<DynamicPlugin>;
-    
+class DynamicPlugin : public IDynamicsService {
 public:
     struct DependencyAnalysisResult {
         Eigen::MatrixXd Pb; // independant column selection matrix
@@ -17,23 +15,23 @@ public:
         Eigen::MatrixXd Kd; // relation matrix
     };
     
-    DynamicPlugin();
+    explicit DynamicPlugin(IRobotStateProvider* state_port);
 
 public:
-    void identify(const size_t& db_start_index, const size_t& db_end_index);
-    std::optional<JointsTorque> rnea(const JointsPosition& q, const JointsVelocity& v, const JointsAcceleration& a);
-    std::optional<JointsTorque> currentPoseStableTorque(const JointsPosition& q);
-    std::pair<std::vector<double>, std::vector<double>> firstOrderMomentum(const std::vector<double>& q, const std::vector<double>& v, const std::vector<double>& t);
-    std::pair<Eigen::VectorXd, Eigen::VectorXd> firstOrderMomentum(const Eigen::VectorXd& q, const Eigen::VectorXd& v, const Eigen::VectorXd& t);
-    const bool& isReady() const;
+    void identify(const size_t& db_start_index, const size_t& db_end_index) override;
+    std::optional<JointsTorque> rnea(const JointsPosition& q, const JointsVelocity& v, const JointsAcceleration& a) override;
+    std::optional<JointsTorque> currentPoseStableTorque(const JointsPosition& q) override;
+    std::pair<std::vector<double>, std::vector<double>> firstOrderMomentum(const std::vector<double>& q, const std::vector<double>& v, const std::vector<double>& t) override;
+    std::pair<Eigen::VectorXd, Eigen::VectorXd> firstOrderMomentum(const Eigen::VectorXd& q, const Eigen::VectorXd& v, const Eigen::VectorXd& t) override;
+    const bool& isReady() const override;
 
-    const Eigen::MatrixXd& dependenceComputation();
-    const Eigen::MatrixXd& getBaseParams();
-    void setParams(const Eigen::MatrixXd &base, const Eigen::MatrixXd &friction, const Eigen::MatrixXd &Pb, const Eigen::MatrixXd &Pd, const Eigen::MatrixXd &Kd);
-    const Eigen::MatrixXd& getFrictionParams();
-    const Eigen::MatrixXd& getDepPb();
-    const Eigen::MatrixXd& getDepPd();
-    const Eigen::MatrixXd& getDepKd();
+    const Eigen::MatrixXd& dependenceComputation() override;
+    const Eigen::MatrixXd& getBaseParams() override;
+    void setParams(const Eigen::MatrixXd &base, const Eigen::MatrixXd &friction, const Eigen::MatrixXd &Pb, const Eigen::MatrixXd &Pd, const Eigen::MatrixXd &Kd) override;
+    const Eigen::MatrixXd& getFrictionParams() override;
+    const Eigen::MatrixXd& getDepPb() override;
+    const Eigen::MatrixXd& getDepPd() override;
+    const Eigen::MatrixXd& getDepKd() override;
 
 private:
     Eigen::VectorXd calculateExternalCartesianForce(const Eigen::VectorXd &q, const Eigen::VectorXd& joint_torques);
@@ -44,8 +42,10 @@ private:
     void fillFrictionRegressor(Eigen::MatrixXd &block, const Eigen::VectorXd &v);
 
 private:
+    IRobotStateProvider* state_port_{nullptr};
     pinocchio::Model model_;
     pinocchio::Data data_;
+    Eigen::MatrixXd empty_matrix_;
     DependencyAnalysisResult dep_res_;
     Eigen::MatrixXd all_params_;
     Eigen::MatrixXd base_params_model_;

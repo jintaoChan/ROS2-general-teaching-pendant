@@ -2,14 +2,22 @@
 #include <QMessageBox>
 #include <QHBoxLayout>
 #include <QPointer>
+#include <stdexcept>
 #include "setting_panel.h"
 #include "ui_setting_panel.h"
-#include "kinematics_plugin.h"
+#include "motion_plugin.h"
 
-SettingPanel::SettingPanel(QWidget *parent)
+SettingPanel::SettingPanel(const AppPorts& ports, QWidget *parent)
     : QWidget(parent)
     , ui_(new Ui::SettingPanel)
+    , state_port_(ports.state)
+    , command_port_(ports.command)
+    , event_port_(ports.events)
 {
+    if (state_port_ == nullptr || command_port_ == nullptr || event_port_ == nullptr) {
+        throw std::invalid_argument("SettingPanel requires non-null ports");
+    }
+
     ui_->setupUi(this);
     ui_->horizontalSlider_velocity->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     ui_->horizontalSlider_velocity->setMinimumWidth(140);
@@ -31,17 +39,17 @@ SettingPanel::SettingPanel(QWidget *parent)
     }
     QObject::connect(ui_->coordinate_selection_combobox, &QComboBox::currentTextChanged, [this](const auto& text) {
         auto coord_type = magic_enum::enum_cast<ControlCoordinateSystemType>(text.toStdString()).value();
-        if (coord_type == ControlCoordinateSystemType::Tool && !RobotHandle::instance().isToolFrameSet()) {
+        if (coord_type == ControlCoordinateSystemType::Tool && !state_port_->isToolFrameSet()) {
             QMessageBox::warning(this, "Warning", "Tool is not set yet!");
             QSignalBlocker blocker(ui_->coordinate_selection_combobox);
             ui_->coordinate_selection_combobox->setCurrentIndex(previous_coordinate_index_);
         } else {
             previous_coordinate_index_ = ui_->coordinate_selection_combobox->currentIndex();
-            KinematicsPlugin::instance().selectCoordinateSystem(coord_type);
+            MotionPlugin::instance().selectCoordinateSystem(coord_type);
         }
     });
     ui_->coordinate_selection_combobox->setCurrentText(QString::fromStdString(std::string(magic_enum::enum_name(ControlCoordinateSystemType::Base))));
-    KinematicsPlugin::instance().selectCoordinateSystem(ControlCoordinateSystemType::Base);
+    MotionPlugin::instance().selectCoordinateSystem(ControlCoordinateSystemType::Base);
     previous_coordinate_index_ = ui_->coordinate_selection_combobox->currentIndex();
     ui_->horizontalSlider_velocity->setMaximum(100);
     ui_->horizontalSlider_velocity->setMinimum(0);
@@ -51,7 +59,7 @@ SettingPanel::SettingPanel(QWidget *parent)
     ui_->drag_button->setEnabled(false);
 
     QPointer<SettingPanel> self(this);
-    motor_status_callback_id_ = RobotHandle::instance().registerMotorStatusCallback([self](JointsStatus state) {
+    motor_status_callback_id_ = event_port_->registerMotorStatusCallback([self](JointsStatus state) {
         if (!self) {
             return;
         }
@@ -82,7 +90,7 @@ SettingPanel::SettingPanel(QWidget *parent)
 SettingPanel::~SettingPanel()
 {
     if (motor_status_callback_id_.has_value()) {
-        RobotHandle::instance().unregisterMotorStatusCallback(motor_status_callback_id_.value());
+        event_port_->unregisterMotorStatusCallback(motor_status_callback_id_.value());
         motor_status_callback_id_ = std::nullopt;
     }
     delete ui_;
@@ -105,7 +113,7 @@ ControlCoordinateSystemType SettingPanel::getCoordinateSystem()
 
 void SettingPanel::regularUpdate()
 {
-    const auto& is_running = RobotHandle::instance().isRunning();
+    const auto& is_running = state_port_->isRunning();
     QString styleSheet;
     if(is_running) {
         styleSheet = R"(
@@ -139,7 +147,7 @@ void SettingPanel::regularUpdate()
     else{
         ui_->clear_fault_button->setEnabled(false);
     }
-    const auto& is_dragging = KinematicsPlugin::instance().isDragging();
+    const auto& is_dragging = MotionPlugin::instance().isDragging();
     if(is_dragging) {
         ui_->drag_button->setChecked(true);
     }
@@ -164,25 +172,25 @@ void SettingPanel::on_coordinate_selection_combobox_currentIndexChanged(int)
 void SettingPanel::on_drag_button_toggled(bool checked)
 {
     if(checked) {
-        KinematicsPlugin::instance().startDragging();
+        MotionPlugin::instance().startDragging();
     }
     else{
-        KinematicsPlugin::instance().stopDragging();
+        MotionPlugin::instance().stopDragging();
     }
 }
 
 void SettingPanel::on_clear_fault_button_clicked()
 {
-    RobotHandle::instance().clearFault();
+    command_port_->clearFault();
 }
 
 void SettingPanel::on_motor_driver_enable_button_clicked()
 {
     if(is_enabled_) {
-        RobotHandle::instance().disableMotorDrive();
+        command_port_->disableMotorDrive();
     }
     else{
-        RobotHandle::instance().enableMotorDrive();
+        command_port_->enableMotorDrive();
     }
 }
 

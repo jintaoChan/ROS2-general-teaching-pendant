@@ -1,23 +1,27 @@
 #include <QtConcurrent/QtConcurrent>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <stdexcept>
 
 #include "control_pad.h"
 #include "ui_control_pad.h"
 #include "joint_group_widget.h"
-#include "robot_handle.h"
 #include "setting_panel.h"
-#include "kinematics_plugin.h"
+#include "motion_plugin.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2/LinearMath/Matrix3x3.h"
 
-ControlPad::ControlPad(SettingPanel* setting_panel, QWidget *parent)
+ControlPad::ControlPad(SettingPanel* setting_panel, IRobotStateProvider* state_port, QWidget *parent)
     : QWidget(parent)
     , ui_(new Ui::ControlPad)
     , setting_panel_(setting_panel)
+    , state_port_(state_port)
 {
+    if (state_port_ == nullptr) {
+        throw std::invalid_argument("ControlPad requires non-null state port");
+    }
+
     ui_->setupUi(this);
-    auto& robot_des = RobotHandle::instance();
     QHBoxLayout* hlayout = new QHBoxLayout(this);
     auto cartesianPad = new CartesianPad(this);
     connect(cartesianPad, &CartesianPad::MoveButtonClicked, this, [this](MoveButtonType type, MoveButtonEvent event, size_t idx){emit MoveCommander(type, event, idx);});
@@ -25,7 +29,7 @@ ControlPad::ControlPad(SettingPanel* setting_panel, QWidget *parent)
     QVBoxLayout* vlayout = new QVBoxLayout();
 
     JointGroupWidget* jg = new JointGroupWidget("tmp group", this);
-    auto joints = robot_des.getJointsName();
+    auto joints = state_port_->getJointsName();
     for(const auto& jt : joints) {
         jg->addJoint(jt);
         connect(jg, &JointGroupWidget::MoveButtonClicked, [this](MoveButtonType type, MoveButtonEvent event, const std::string& joint_name){emit MoveCommander(type, event, joint_name);});
@@ -47,7 +51,7 @@ ControlPad::ControlPad(SettingPanel* setting_panel, QWidget *parent)
 
     timer_ = new QTimer(this);
     connect(timer_, &QTimer::timeout, this, &ControlPad::regularUpdate);
-    timer_->start(RobotHandle::instance().getControllerUpdatePeriod() / 1e6);
+    timer_->start(state_port_->getControllerUpdatePeriod() / 1e6);
 }
 
 void ControlPad::MoveCommander(MoveButtonType type, MoveButtonEvent event, const std::string &joint_name) const {
@@ -56,33 +60,33 @@ void ControlPad::MoveCommander(MoveButtonType type, MoveButtonEvent event, const
     switch(type){
     case MoveButtonType::BACKWARD_VELOCITY: {
         if(event == MoveButtonEvent::PRESSED){
-            joint_position[joint_name].joint_value = RobotHandle::instance().getJointLowerLimit(joint_name);
-            KinematicsPlugin::instance().moveJointPositionAbsolutely(joint_position, velo_ratio);
+            joint_position[joint_name].joint_value = state_port_->getJointLowerLimit(joint_name);
+            MotionPlugin::instance().moveJointPositionAbsolutely(joint_position, velo_ratio);
         }
         else if(event == MoveButtonEvent::RELEASED){
-            KinematicsPlugin::instance().stop();
+            MotionPlugin::instance().stop();
         }
         break;
     }
     case MoveButtonType::BACKWARD_STEP: {
         if(event == MoveButtonEvent::CLICKED)
             joint_position[joint_name].joint_value = current_position_.at(joint_name).joint_value - setting_panel_->getStep();
-        KinematicsPlugin::instance().moveJointPositionAbsolutely(joint_position, velo_ratio);
+        MotionPlugin::instance().moveJointPositionAbsolutely(joint_position, velo_ratio);
         break;
     }
     case MoveButtonType::FORWARD_STEP: {
         if(event == MoveButtonEvent::CLICKED)
             joint_position[joint_name].joint_value = current_position_.at(joint_name).joint_value + setting_panel_->getStep();
-        KinematicsPlugin::instance().moveJointPositionAbsolutely(joint_position, velo_ratio);
+        MotionPlugin::instance().moveJointPositionAbsolutely(joint_position, velo_ratio);
         break;
     }
     case MoveButtonType::FORWARD_VELOCITY: {
         if(event == MoveButtonEvent::PRESSED){
-            joint_position[joint_name].joint_value = RobotHandle::instance().getJointUpperLimit(joint_name);
-            KinematicsPlugin::instance().moveJointPositionAbsolutely(joint_position, velo_ratio);
+            joint_position[joint_name].joint_value = state_port_->getJointUpperLimit(joint_name);
+            MotionPlugin::instance().moveJointPositionAbsolutely(joint_position, velo_ratio);
         }
         else if(event == MoveButtonEvent::RELEASED){
-            KinematicsPlugin::instance().stop();
+            MotionPlugin::instance().stop();
         }
         break;
     }
@@ -94,7 +98,7 @@ void ControlPad::MoveCommander(MoveButtonType type, MoveButtonEvent event, size_
     switch(type){
     case MoveButtonType::BACKWARD_VELOCITY: {
         if(event == MoveButtonEvent::PRESSED){
-            arr[idx] = -setting_panel_->getVelocity() * RobotHandle::instance().getCartesianLimitsMaxTransVel();
+            arr[idx] = -setting_panel_->getVelocity() * state_port_->getCartesianLimitsMaxTransVel();
         }
         else if(event == MoveButtonEvent::RELEASED){
         }
@@ -102,7 +106,7 @@ void ControlPad::MoveCommander(MoveButtonType type, MoveButtonEvent event, size_
     }
     case MoveButtonType::FORWARD_VELOCITY: {
         if(event == MoveButtonEvent::PRESSED){
-            arr[idx] = setting_panel_->getVelocity() * RobotHandle::instance().getCartesianLimitsMaxTransVel();
+            arr[idx] = setting_panel_->getVelocity() * state_port_->getCartesianLimitsMaxTransVel();
         }
         else if(event == MoveButtonEvent::RELEASED){
         }
@@ -111,7 +115,7 @@ void ControlPad::MoveCommander(MoveButtonType type, MoveButtonEvent event, size_
         break;
     }
     }
-    KinematicsPlugin::instance().twistRobot(arr);
+    MotionPlugin::instance().twistRobot(arr);
 }
 
 ControlPad::~ControlPad()
@@ -121,7 +125,7 @@ ControlPad::~ControlPad()
 
 void ControlPad::regularUpdate()
 {
-    auto current_joint_position = RobotHandle::instance().getCurrentJointPosition();
+    auto current_joint_position = state_port_->getCurrentJointPosition();
 
     for(const auto& jointGroup: this->findChildren<JointGroupWidget*>()) {
         for(const auto& joint: jointGroup->findChildren<JointWidget*>()) {
@@ -131,7 +135,7 @@ void ControlPad::regularUpdate()
         }
     }
 
-    auto pose = KinematicsPlugin::instance().getCurrentCartesianPose();
+    auto pose = MotionPlugin::instance().getCurrentCartesianPose();
     auto dofRows = this->findChildren<CartesianDOFRow*>();
     dofRows[0]->position_label_->setText(QString::number(pose.pose.position.x, 'f', 3));
     dofRows[1]->position_label_->setText(QString::number(pose.pose.position.y, 'f', 3));

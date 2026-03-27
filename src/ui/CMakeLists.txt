@@ -68,6 +68,7 @@ include_directories(
 
 add_executable(${PROJECT_NAME}
   main.cpp
+  runtime_bootstrap.cpp
   ${PRO_SOURCES_DIR}
   ${QT_RESOURCES_CPP}
   ${PRO_INCLUDE_DIR}

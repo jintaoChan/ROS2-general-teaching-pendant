@@ -123,7 +123,7 @@
           <param name="slave_config">$(find fake_ur_config)/driver_config/leader5.yaml</param>
         </ec_module>
       </joint>
-      <gpio name="beckhoff_input">
+      <!-- <gpio name="beckhoff_input">
         <state_interface name="d_1"/>
         <state_interface name="d_2"/>
         <state_interface name="d_3"/>
@@ -186,7 +186,7 @@
           <param name="position">8</param>
           <param name="slave_config">$(find fake_ur_config)/driver_config/el2809.yaml</param>
         </ec_module>
-      </gpio>
+      </gpio> -->
       
     </ros2_control>
 

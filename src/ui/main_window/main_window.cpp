@@ -10,7 +10,9 @@
 #include "io.h"
 
 
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(
+    const AppPorts& ports,
+    QWidget *parent)
     : QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
@@ -24,16 +26,16 @@ MainWindow::MainWindow(QWidget *parent)
 
     QTabWidget* tab_widget = new QTabWidget(central);
 
-    SettingPanel* setting_pannel = new SettingPanel(central);
-    ControlPad* control_pad = new ControlPad(setting_pannel, central);
+    SettingPanel* setting_pannel = new SettingPanel(ports, central);
+    ControlPad* control_pad = new ControlPad(setting_pannel, ports.state, central);
     tab_widget->addTab(control_pad, "Move");
-    TaskWidget* task_widget = new TaskWidget(setting_pannel, central);
+    TaskWidget* task_widget = new TaskWidget(setting_pannel, ports.state, central);
     tab_widget->addTab(task_widget, "Task");
-    SettingPage* setting_page = new SettingPage(setting_pannel, central);
+    SettingPage* setting_page = new SettingPage(setting_pannel, ports, central);
     tab_widget->addTab(setting_page, "Setting");
-    PlotPage* plot_page = new PlotPage(10000, central);
+    PlotPage* plot_page = new PlotPage(10000, ports.state, central);
     tab_widget->addTab(plot_page, "Plot");
-    IOPanel* io_panel = new IOPanel();
+    IOPanel* io_panel = new IOPanel(ports, central);
     tab_widget->addTab(io_panel, "IO");
 
 

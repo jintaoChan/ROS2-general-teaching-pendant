@@ -8,18 +8,20 @@
 #include <QWidget>
 
 #include "setting_panel.h"
+#include "app_ports.h"
 
 class SettingPage : public QWidget
 {
     Q_OBJECT
 public:
-    explicit SettingPage(SettingPanel* setting_panel, QWidget *parent = nullptr);
+    explicit SettingPage(SettingPanel* setting_panel, const AppPorts& ports, QWidget *parent = nullptr);
 
 signals:
 
 
 private:
     SettingPanel* setting_panel_;
+    AppPorts ports_;
     QGridLayout* layout;
     QStackedWidget *stacked_widget;
     QListWidget* list_widget;

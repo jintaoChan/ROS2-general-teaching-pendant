@@ -12,7 +12,7 @@
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <cmath>
 #include "database.h"
-#include "dynamic_plugin.h"
+#include "i_dynamics_service.h"
 #include "singleton.hpp"
 #include "functional.hpp"
 
@@ -92,6 +92,8 @@ public:
 
     rclcpp_action::ClientGoalHandle<control_msgs::action::FollowJointTrajectory>::WrappedResult controller_result_;
     bool is_running_ = false;
+
+    IDynamicsService* dynamics_service_{nullptr};
 
     const std::string CONTROL_WORD{"control_word"};
     const std::string STATUS_WORD{"status_word"};
@@ -437,7 +439,9 @@ void RobotHandle::Impl::switchDriverMode(DriverMode mode)
     case DriverMode::CSP:
         moveJointByAbsPosition(current_joint_position_, 1.0);break;
     case DriverMode::CST:{
-        auto t_opt = DynamicPlugin::instance().currentPoseStableTorque(current_joint_position_);
+        auto t_opt = dynamics_service_
+                     ? dynamics_service_->currentPoseStableTorque(current_joint_position_)
+                     : std::optional<JointsTorque>{};
         if(!t_opt.has_value()) {
             throw(std::runtime_error("Calculating rnea failed! Unable to switch to effort mode!"));
         }
@@ -550,7 +554,6 @@ RobotHandle::RobotHandle(const std::shared_ptr<rclcpp::Node>& node)
         RCLCPP_WARN(impl_->node_->get_logger(), "grtp_path not set; file-based loads will be skipped.");
     }
 
-    DynamicPlugin::init();
     auto update_rate = AcquireParam<int32_t>("/controller_manager", "update_rate").value();
     impl_->controller_update_period_ = 1e9 / update_rate;
 
@@ -697,7 +700,7 @@ const std::string& RobotHandle::getCurrentToolFrame() const {
 void RobotHandle::Impl::jointStateCallback(const sensor_msgs::msg::JointState &msg)
 {
     auto& data_base = DataBase::instance();
-    auto observer_ready = DynamicPlugin::instance().isReady();
+    auto observer_ready = dynamics_service_ && dynamics_service_->isReady();
     for(size_t i = 0; i < msg.name.size(); ++i) {
         current_joint_position_[msg.name[i]].joint_value = msg.position[i];
         current_joint_velocity_[msg.name[i]].joint_value = msg.velocity[i];
@@ -912,6 +915,11 @@ const bool &RobotHandle::isRunning() const
 
 void RobotHandle::setJointTorqueOffset(const std::string& joint_name, double v){
     impl_->joint_torque_offset_[joint_name].joint_value = v;
+}
+
+void RobotHandle::setDynamicsService(IDynamicsService* dynamics)
+{
+    impl_->dynamics_service_ = dynamics;
 }
 
 size_t RobotHandle::registerMotorStatusCallback(MotorStatusCallback cb)

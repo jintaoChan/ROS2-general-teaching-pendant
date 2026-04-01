@@ -4,7 +4,8 @@
 #include <urdf/model.h>
 #include <kdl/chainfksolverpos_recursive.hpp>
 #include <kdl/chainiksolverpos_nr_jl.hpp>
-#include <kdl/chainiksolvervel_pinv.hpp>
+#include <kdl/chainiksolvervel_wdls.hpp>
+#include <kdl/chainjnttojacsolver.hpp>
 #include <trac_ik/trac_ik.hpp>
 #include <builtin_interfaces/msg/time.hpp>
 #include "i_kinematics_solver.h"
@@ -27,6 +28,7 @@ public:
 private:
     void resetSolver();
     KDL::Frame tcpCalibration(const std::vector<KDL::Frame>& points);
+    double computeSingularityScale(const KDL::JntArray& joint_pos, const Eigen::Matrix<double, 6, 1>& cartesian_delta);
 
 private:
     KDL::Frame pose2KDLFrame(geometry_msgs::msg::Pose pose);
@@ -45,11 +47,24 @@ private:
     KDL::JntArray joints_limit_min_;
     KDL::JntArray joints_limit_max_;
     std::unique_ptr<KDL::ChainFkSolverPos_recursive> fk_solver_;
-    std::unique_ptr<KDL::ChainIkSolverVel_pinv> ik_velocity_solver_;
+    std::unique_ptr<KDL::ChainIkSolverVel_wdls> ik_velocity_solver_;
     std::unique_ptr<KDL::ChainIkSolverPos_NR_JL> ik_solver_;
+    std::unique_ptr<KDL::ChainJntToJacSolver> jac_solver_;
     KDL::JntArray current_joint_position_;
     KDL::Rotation selected_coord_system_;
     geometry_msgs::msg::PoseStamped current_pose_;
     geometry_msgs::msg::PoseStamped stored_pose_;
     geometry_msgs::msg::Twist twist_msg_;
+
+    // Incremental jog state
+    KDL::Frame desired_pose_;
+    rclcpp::Time last_compute_time_{0, 0, RCL_ROS_TIME};
+
+    // Singularity thresholds (Jacobian condition number)
+    static constexpr double kLowerSingularityThreshold = 100.0;
+    static constexpr double kHardStopSingularityThreshold = 500.0;
+    static constexpr double kLeavingSingularityMultiplier = 2.0;
+    static constexpr double kDlsLambda = 0.01;
+    static constexpr double kJogJointVelocityScale = 10;   // allow a modest boost to preserve Cartesian responsiveness
+    static constexpr double kMinCartesianStepScale = 1e-3;
 };

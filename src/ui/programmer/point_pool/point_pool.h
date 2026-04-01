@@ -7,11 +7,9 @@
 #include "treeview_with_key_event.h"
 #include "robot_handle.h"
 #include "utils.h"
-#include "singleton.hpp"
 
 
-class PointPool : public Singleton<PointPool>{
-    friend class Singleton<PointPool>;
+class PointPool {
 public:
     PointPool() = default;
 
@@ -54,6 +52,8 @@ public:
     ~PointPoolWidget(){};
 
 public:
+    PointPool& pointPool() { return point_pool_; }
+    const PointPool& pointPool() const { return point_pool_; }
     auto getPointsName() const -> QStringList;
     auto getPoint(const std::string& point_name) const -> TargetPointInfo;
     void addPoint(const TargetPointInfo& point_info);
@@ -74,6 +74,7 @@ public slots:
     void modifyPointName(const std::string& old_name, const std::string& new_name);
 
 private:
+    PointPool point_pool_;
     Ui::PointPoolWidget *ui;
     ItemFilterDelegate* point_poolItem_filter_delegate_;
     QStandardItemModel* model_;

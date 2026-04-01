@@ -1,5 +1,6 @@
 #include "kinematics_plugin.h"
 #include <Eigen/Dense>
+#include <Eigen/SVD>
 #include <iostream>
 #include <stdexcept>
 
@@ -56,6 +57,15 @@ void KinematicsPlugin::prepareCartesianJog(const geometry_msgs::msg::Twist& twis
     }
     }
     resetSolver();
+
+    // Initialize incremental jog state: desired_pose_ from current FK
+    const auto joints_value_map = state_port_->getCurrentJointPosition();
+    KDL::JntArray q(joints_num_);
+    for (size_t i = 0; i < joints_num_; ++i) {
+        q(i) = joints_value_map.at(joints_names_[i]).joint_value;
+    }
+    fk_solver_->JntToCart(q, desired_pose_);
+    last_compute_time_ = state_port_->getTime();
 }
 
 std::optional<JointsPosition> KinematicsPlugin::computeCartesianJogCommand(const rclcpp::Time& current_time)
@@ -65,52 +75,105 @@ std::optional<JointsPosition> KinematicsPlugin::computeCartesianJogCommand(const
         current_joint_position_(i) = joints_value_map.at(joints_names_[i]).joint_value;
     }
 
-    auto time_diff = current_time.seconds() -
-        (static_cast<double>(stored_pose_.header.stamp.sec) + 1e-9 * static_cast<double>(stored_pose_.header.stamp.nanosec));
-
-    bool is_ok{false};
-    static const double max_velocity_divider{4};
-    double velocity_divider{1};
-    KDL::JntArray target_joints_value(joints_num_);
-    KDL::Frame target_pose_start = pose2KDLFrame(stored_pose_.pose);
-
-    while (!is_ok && velocity_divider < max_velocity_divider) {
-        KDL::Frame target_pose = target_pose_start;
-        auto transformed_linear_vel = selected_coord_system_ * KDL::Vector(twist_msg_.linear.x, twist_msg_.linear.y, twist_msg_.linear.z);
-        auto vx = transformed_linear_vel(0);
-        auto vy = transformed_linear_vel(1);
-        auto vz = transformed_linear_vel(2);
-
-        target_pose.p.x(target_pose.p.x() + time_diff * vx / velocity_divider);
-        target_pose.p.y(target_pose.p.y() + time_diff * vy / velocity_divider);
-        target_pose.p.z(target_pose.p.z() + time_diff * vz / velocity_divider);
-        target_pose.M = selected_coord_system_ *
-                        KDL::Rotation::RotX(time_diff * twist_msg_.angular.x / velocity_divider) *
-                        KDL::Rotation::RotY(time_diff * twist_msg_.angular.y / velocity_divider) *
-                        KDL::Rotation::RotZ(time_diff * twist_msg_.angular.z / velocity_divider) *
-                        selected_coord_system_.Inverse() * target_pose.M;
-
-        auto ik_ret = ik_solver_->CartToJnt(current_joint_position_, target_pose, target_joints_value);
-        if (ik_ret < 0) {
-            return std::nullopt;
-        }
-
-        bool is_velocity_valid{true};
+    // Incremental dt from last compute cycle (not total elapsed time)
+    const double dt = current_time.seconds() - last_compute_time_.seconds();
+    if (dt <= 0.0) {
+        // No time elapsed, return current position to hold steady
+        JointsPosition hold;
         for (size_t i = 0; i < joints_num_; ++i) {
-            if (std::abs(target_joints_value(i) - current_joint_position_(i)) > state_port_->getJointVelocityLimit(joints_names_[i]) * time_diff) {
-                is_velocity_valid = false;
-                break;
-            }
+            hold[joints_names_[i]].joint_value = current_joint_position_(i);
         }
-        if (!is_velocity_valid) {
-            velocity_divider *= 2;
+        return hold;
+    }
+    last_compute_time_ = current_time;
+
+    // Compute current FK
+    KDL::Frame current_fk;
+    fk_solver_->JntToCart(current_joint_position_, current_fk);
+
+    // Transform twist into base frame
+    auto transformed_linear_vel = selected_coord_system_ * KDL::Vector(twist_msg_.linear.x, twist_msg_.linear.y, twist_msg_.linear.z);
+    auto transformed_angular_vel = selected_coord_system_ * KDL::Vector(twist_msg_.angular.x, twist_msg_.angular.y, twist_msg_.angular.z);
+
+    // Build 6D cartesian delta for direction-aware singularity check
+    Eigen::Matrix<double, 6, 1> cartesian_delta;
+    cartesian_delta << transformed_linear_vel(0) * dt,
+                       transformed_linear_vel(1) * dt,
+                       transformed_linear_vel(2) * dt,
+                       transformed_angular_vel(0) * dt,
+                       transformed_angular_vel(1) * dt,
+                       transformed_angular_vel(2) * dt;
+
+    // Compute singularity velocity scale (direction-aware)
+    const double singularity_scale = computeSingularityScale(current_joint_position_, cartesian_delta);
+    if (singularity_scale <= 0.0) {
+        desired_pose_ = current_fk;
+        JointsPosition hold;
+        for (size_t i = 0; i < joints_num_; ++i) {
+            hold[joints_names_[i]].joint_value = current_joint_position_(i);
+        }
+        return hold;
+    }
+
+    // IMPORTANT: scale the Cartesian step itself before IK.
+    // If we clamp only the joint-space result after IK, the commanded joints no longer
+    // correspond to the desired Cartesian target, which can cause oscillation near singularities.
+    const KDL::Frame desired_pose_start = desired_pose_;
+    KDL::JntArray target_joints_value(joints_num_);
+    double step_scale = singularity_scale;
+    bool is_ok = false;
+
+    while (step_scale >= kMinCartesianStepScale) {
+        KDL::Frame candidate_pose = desired_pose_start;
+
+        double vx = transformed_linear_vel(0) * step_scale;
+        double vy = transformed_linear_vel(1) * step_scale;
+        double vz = transformed_linear_vel(2) * step_scale;
+        double wx = transformed_angular_vel(0) * step_scale;
+        double wy = transformed_angular_vel(1) * step_scale;
+        double wz = transformed_angular_vel(2) * step_scale;
+
+        candidate_pose.p.x(candidate_pose.p.x() + dt * vx);
+        candidate_pose.p.y(candidate_pose.p.y() + dt * vy);
+        candidate_pose.p.z(candidate_pose.p.z() + dt * vz);
+        candidate_pose.M = selected_coord_system_ *
+                           KDL::Rotation::RotX(dt * wx) *
+                           KDL::Rotation::RotY(dt * wy) *
+                           KDL::Rotation::RotZ(dt * wz) *
+                           selected_coord_system_.Inverse() * candidate_pose.M;
+
+        auto ik_ret = ik_solver_->CartToJnt(current_joint_position_, candidate_pose, target_joints_value);
+        if (ik_ret < 0) {
+            step_scale *= 0.5;
             continue;
         }
+
+        double max_velocity_ratio = 0.0;
+        for (size_t i = 0; i < joints_num_; ++i) {
+            double joint_vel = std::abs(target_joints_value(i) - current_joint_position_(i)) / dt;
+            double vel_limit = kJogJointVelocityScale * state_port_->getJointVelocityLimit(joints_names_[i]);
+            if (vel_limit > 0.0) {
+                max_velocity_ratio = std::max(max_velocity_ratio, joint_vel / vel_limit);
+            }
+        }
+
+        if (max_velocity_ratio > 1.0) {
+            step_scale /= max_velocity_ratio;
+            continue;
+        }
+
+        desired_pose_ = candidate_pose;
         is_ok = true;
+        break;
     }
 
     if (!is_ok) {
-        return std::nullopt;
+        desired_pose_ = current_fk;
+        JointsPosition hold;
+        for (size_t i = 0; i < joints_num_; ++i) {
+            hold[joints_names_[i]].joint_value = current_joint_position_(i);
+        }
+        return hold;
     }
 
     JointsPosition target_joint_positions;
@@ -118,6 +181,75 @@ std::optional<JointsPosition> KinematicsPlugin::computeCartesianJogCommand(const
         target_joint_positions[joints_names_[i]].joint_value = target_joints_value(i);
     }
     return target_joint_positions;
+}
+
+double KinematicsPlugin::computeSingularityScale(const KDL::JntArray& joint_pos,
+                                                  const Eigen::Matrix<double, 6, 1>& cartesian_delta)
+{
+    KDL::Jacobian jac(joints_num_);
+    jac_solver_->JntToJac(joint_pos, jac);
+
+    // SVD of the 6×N Jacobian
+    const int dims = std::min<int>(jac.data.rows(), jac.data.cols());
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(jac.data, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    const auto& sv = svd.singularValues();
+    if (dims == 0 || sv(dims - 1) < 1e-10) {
+        return 0.0;
+    }
+
+    const double condition_number = sv(0) / sv(dims - 1);
+    if (condition_number < kLowerSingularityThreshold) {
+        return 1.0;
+    }
+
+    // Direction awareness: is the commanded motion moving toward or away from singularity?
+    // The singular vector for the least singular value = last column of U.
+    Eigen::VectorXd vector_towards_singularity = svd.matrixU().col(dims - 1);
+
+    // Verify direction by taking a small step: if condition number increases,
+    // vector_towards_singularity points toward singularity; otherwise flip it.
+    const Eigen::MatrixXd pseudo_inverse = svd.matrixV() * sv.asDiagonal().inverse() * svd.matrixU().transpose();
+    Eigen::VectorXd next_q(joints_num_);
+    for (size_t i = 0; i < joints_num_; ++i) {
+        next_q(i) = joint_pos(i);
+    }
+    next_q += pseudo_inverse * (vector_towards_singularity * 0.01);
+
+    // Compute condition number at the test position
+    KDL::JntArray test_q(joints_num_);
+    for (size_t i = 0; i < joints_num_; ++i) {
+        test_q(i) = next_q(i);
+    }
+    KDL::Jacobian test_jac(joints_num_);
+    jac_solver_->JntToJac(test_q, test_jac);
+    Eigen::JacobiSVD<Eigen::MatrixXd> test_svd(test_jac.data, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    const auto& test_sv = test_svd.singularValues();
+    const double test_condition = (test_sv(dims - 1) > 1e-10) ? test_sv(0) / test_sv(dims - 1) : 1e6;
+
+    if (test_condition <= condition_number) {
+        // Our guess was wrong, flip the direction
+        vector_towards_singularity *= -1;
+    }
+
+    // Check if commanded motion is toward or away from singularity
+    const bool moving_towards = vector_towards_singularity.dot(cartesian_delta) > 0;
+
+    // Upper threshold depends on direction: more lenient when leaving singularity
+    double upper_threshold;
+    if (moving_towards) {
+        upper_threshold = kHardStopSingularityThreshold;
+    } else {
+        const double range = kHardStopSingularityThreshold - kLowerSingularityThreshold;
+        upper_threshold = kLowerSingularityThreshold + range * kLeavingSingularityMultiplier;
+    }
+
+    if (condition_number >= upper_threshold) {
+        return moving_towards ? 0.0 : 1.0;
+    }
+
+    double scale = 1.0 - (condition_number - kLowerSingularityThreshold) /
+                         (upper_threshold - kLowerSingularityThreshold);
+    return std::clamp(scale, 0.0, 1.0);
 }
 
 std::optional<JointsPosition> KinematicsPlugin::solvePoseIK(const KDL::Frame& pose)
@@ -234,8 +366,10 @@ void KinematicsPlugin::resetSolver()
     kdl_chain_ = default_kdl_chain_;
     kdl_chain_.addSegment(tool_segment_);
     fk_solver_ = std::make_unique<KDL::ChainFkSolverPos_recursive>(kdl_chain_);
-    ik_velocity_solver_ = std::make_unique<KDL::ChainIkSolverVel_pinv>(kdl_chain_);
+    ik_velocity_solver_ = std::make_unique<KDL::ChainIkSolverVel_wdls>(kdl_chain_);
+    ik_velocity_solver_->setLambda(kDlsLambda);
     ik_solver_ = std::make_unique<KDL::ChainIkSolverPos_NR_JL>(kdl_chain_, joints_limit_min_, joints_limit_max_, *fk_solver_, *ik_velocity_solver_, 200, 1e-5);
+    jac_solver_ = std::make_unique<KDL::ChainJntToJacSolver>(kdl_chain_);
 }
 
 KDL::Frame KinematicsPlugin::pose2KDLFrame(geometry_msgs::msg::Pose pose) {

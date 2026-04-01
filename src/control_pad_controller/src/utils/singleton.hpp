@@ -8,16 +8,15 @@ class Singleton {
 public:
     template <typename... Args>
     static T& init(Args&&... args) {
-        std::call_once(m_InitFlag, [&]() {
-            m_Instance.reset(new T(std::forward<Args>(args)...));
-        });
+        std::lock_guard<std::mutex> lock(m_Mutex);
         if (!m_Instance) {
-            throw std::runtime_error("Singleton already initialized with different arguments");
+            m_Instance.reset(new T(std::forward<Args>(args)...));
         }
         return *m_Instance;
     }
 
     static T& instance() {
+        std::lock_guard<std::mutex> lock(m_Mutex);
         if (!m_Instance) {
             throw std::runtime_error("Singleton not initialized. Call init(...) first.");
         }
@@ -25,6 +24,7 @@ public:
     }
 
     static void destroy() {
+        std::lock_guard<std::mutex> lock(m_Mutex);
         m_Instance.reset();
     }
 
@@ -37,11 +37,11 @@ protected:
 
 private:
     static std::unique_ptr<T> m_Instance;
-    static std::once_flag m_InitFlag;
+    static std::mutex m_Mutex;
 };
 
 template <typename T>
 std::unique_ptr<T> Singleton<T>::m_Instance;
 
 template <typename T>
-std::once_flag Singleton<T>::m_InitFlag;
+std::mutex Singleton<T>::m_Mutex;

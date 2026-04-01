@@ -5,12 +5,15 @@
 #include <QStandardItem>
 #include "robot_ports.h"
 #include "setting_panel.h"
+#include "task_executor.h"
 #include "utils.h"
 
 
 namespace Ui {
 class TaskWidget;
 }
+
+class PointPool;
 
 class TaskWidget : public QWidget
 {
@@ -19,6 +22,8 @@ class TaskWidget : public QWidget
 public:
     explicit TaskWidget(SettingPanel* setting_panel, IRobotStateProvider* state_port, QWidget *parent = nullptr);
     ~TaskWidget();
+
+    PointPool& pointPool();
 
 
 public slots:
@@ -41,6 +46,7 @@ private:
     Ui::TaskWidget *ui;
     SettingPanel* setting_panel_;
     IRobotStateProvider* state_port_{nullptr};
+    TaskExecutor task_executor_;
 };
 
 #endif // TASK_WIDGET_H

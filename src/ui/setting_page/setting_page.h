@@ -10,11 +10,13 @@
 #include "setting_panel.h"
 #include "app_ports.h"
 
+class PointPool;
+
 class SettingPage : public QWidget
 {
     Q_OBJECT
 public:
-    explicit SettingPage(SettingPanel* setting_panel, const AppPorts& ports, QWidget *parent = nullptr);
+    explicit SettingPage(SettingPanel* setting_panel, const AppPorts& ports, PointPool& point_pool, QWidget *parent = nullptr);
 
 signals:
 

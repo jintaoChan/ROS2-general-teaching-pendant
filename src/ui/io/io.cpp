@@ -303,7 +303,7 @@ void IOPanel::initLayout(IOStatus state) {
                     added_interfaces.push_back(interface_name);
                 };
 
-                // Priority 1: follow RobotHandle callback message order (state order).
+                // Priority 1: follow port's callback message order (state order).
                 for (const auto &inf : m.second) {
                     if (std::find(output_it->second.begin(), output_it->second.end(), inf.first) != output_it->second.end()) {
                         add_output_io(inf.first);

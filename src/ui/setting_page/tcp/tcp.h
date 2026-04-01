@@ -13,6 +13,8 @@
 #include "app_ports.h"
 #include "tool_frame_widget.h"
 
+class PointPool;
+
 class ListItemWidget : public QWidget {
     Q_OBJECT
 public:
@@ -138,7 +140,7 @@ class TCP : public QWidget
 {
     Q_OBJECT
 public:
-    explicit TCP(const AppPorts& ports, QWidget *parent = nullptr);
+    explicit TCP(const AppPorts& ports, PointPool& point_pool, QWidget *parent = nullptr);
     ~TCP();
 
     bool eventFilter(QObject* obj, QEvent* event);
@@ -157,6 +159,7 @@ private:
     Ui::TCP *ui_;
     const ToolInfo& tool_info_;
     AppPorts ports_;
+    PointPool& point_pool_;
     QButtonGroup* check_box_group_;
     ToolFrameWidget* tool_frame_widget_;
     ListItemWidget* current_selected_tool{nullptr};

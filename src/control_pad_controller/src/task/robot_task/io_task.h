@@ -40,8 +40,6 @@ private:
     std::optional<bool> current_state_;
     bool is_executing_;
     std::optional<size_t> callback_id_;
-    // Sentinel shared with the RobotHandle callback: set to false on destruction
-    // so the callback becomes a no-op after IOTask is gone.
     std::shared_ptr<std::atomic<bool>> alive_;
 
     static IRobotCommandPort* command_port_;

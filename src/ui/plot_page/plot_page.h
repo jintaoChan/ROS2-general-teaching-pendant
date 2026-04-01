@@ -6,6 +6,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QComboBox>
+#include <QCheckBox>
 #include <QPushButton>
 #include "database.h"
 #include "plot_widget.h"
@@ -38,6 +39,8 @@ private:
     QPushButton* clear_button_;
     QComboBox* combobox_;
     QList<PlotWidget*> graph_list_;
+    QHBoxLayout* checkbox_layout_;
+    QList<QCheckBox*> joint_checkboxes_;
     IRobotStateProvider* state_port_{nullptr};
 };
 

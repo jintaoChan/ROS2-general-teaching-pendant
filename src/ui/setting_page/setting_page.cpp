@@ -4,7 +4,7 @@
 #include "tcp.h"
 #include "param_identification.h"
 
-SettingPage::SettingPage(SettingPanel* setting_panel, const AppPorts& ports, QWidget *parent)
+SettingPage::SettingPage(SettingPanel* setting_panel, const AppPorts& ports, PointPool& point_pool, QWidget *parent)
     :
     QWidget{parent},
     setting_panel_(setting_panel),
@@ -18,7 +18,7 @@ SettingPage::SettingPage(SettingPanel* setting_panel, const AppPorts& ports, QWi
 
     stacked_widget = new QStackedWidget;
 
-    TCP* tcp = new TCP(ports_, this);
+    TCP* tcp = new TCP(ports_, point_pool, this);
     ParamIdentification* iden = new ParamIdentification(ports_, this);
     stacked_widget->addWidget(tcp);
     stacked_widget->addWidget(iden);

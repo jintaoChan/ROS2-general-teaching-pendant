@@ -5,11 +5,11 @@
 #include "task_widget.h"
 #include "ui_task_widget.h"
 #include "robot_handle.h"
-#include "task_executor.h"
 #include "task_detail.h"
 #include "move_task.h"
 #include "group_task.h"
 #include "io_task.h"
+#include "point_pool.h"
 #include <stdexcept>
 
 TaskWidget::TaskWidget(SettingPanel* setting_panel, IRobotStateProvider* state_port, QWidget *parent)
@@ -28,7 +28,7 @@ TaskWidget::TaskWidget(SettingPanel* setting_panel, IRobotStateProvider* state_p
     connect(ui->point_pool, &PointPoolWidget::CallTaskListToCheckIfContainThisPoint, ui->task_list, &TaskList::CheckTaskListIfContainThisPoint);
     connect(ui->task_list, &TaskList::ConfirmPointPoolToDeletedPoint, ui->point_pool, static_cast<void(PointPoolWidget::*)(const std::string&)>(&PointPoolWidget::deletePoint));
 
-    TaskExecutor::instance().setStateCallback([this](ExecutorState state) {
+    task_executor_.setStateCallback([this](ExecutorState state) {
         QMetaObject::invokeMethod(this, [this, state]() {
             if (state == ExecutorState::IDLE) {
                 this->ui->execute_button->setEnabled(true);
@@ -44,6 +44,11 @@ TaskWidget::TaskWidget(SettingPanel* setting_panel, IRobotStateProvider* state_p
 TaskWidget::~TaskWidget()
 {
     delete ui;
+}
+
+PointPool& TaskWidget::pointPool()
+{
+    return ui->point_pool->pointPool();
 }
 
 void TaskWidget::addPointFromControlPad(const TargetPointInfo &p)
@@ -199,13 +204,13 @@ void TaskWidget::on_execute_button_clicked()
                 std::unique_ptr<RobotTask> t = std::make_unique<MoveTask>(p);
                 group->addAction(std::move(t));
             }
-            TaskExecutor::instance().addTask(std::move(group));
+            task_executor_.addTask(std::move(group));
             break;
         }
         case TaskActionTypeEnum::Point: {
             auto p = ui->point_pool->getPoint(name);
             std::unique_ptr<RobotTask> t = std::make_unique<MoveTask>(p);
-            TaskExecutor::instance().addTask(std::move(t));
+            task_executor_.addTask(std::move(t));
             break;
         }
         case TaskActionTypeEnum::IO:
@@ -218,12 +223,12 @@ void TaskWidget::on_execute_button_clicked()
             }
             const auto target_state = getTaskIOTargetState(action_item);
             std::unique_ptr<RobotTask> t = std::make_unique<IOTask>(module_name, interface_name, target_state);
-            TaskExecutor::instance().addTask(std::move(t));
+            task_executor_.addTask(std::move(t));
             break;
         }
         }
     }
-    TaskExecutor::instance().start();
+    task_executor_.start();
 }
 
 
@@ -236,6 +241,6 @@ void TaskWidget::on_delete_task_button_clicked()
 
 void TaskWidget::on_stop_button_clicked()
 {
-    TaskExecutor::instance().stop();
+    task_executor_.stop();
 }
 

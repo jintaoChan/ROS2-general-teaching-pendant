@@ -40,11 +40,18 @@ endforeach()
 # ros2_control plugin library
 add_library(${PROJECT_NAME}
   SHARED
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/contracts/robot_handle_ports_adapter.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/robot_handle/robot_handle.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/robot_handle/driver_state_machine.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/robot_handle/io_module_store.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/robot_handle/motor_status_store.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/robot_handle/robot_model_store.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/robot_handle/tool_frame_store.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/robot_handle/robot_model_store.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/robot_handle/tool_frame_store.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/database/database.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/controller_switcher/controller_switcher.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/motion_plugin/motion_plugin.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/motion_plugin/streaming_controller.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/motion_plugin/trajectory_controller.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/kinematics_plugin/kinematics_plugin.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/dynamic_plugin/dynamic_plugin.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/task/robot_task/robot_task.cpp
@@ -60,7 +67,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/contracts>
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/motion_plugin>
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/kinematics_plugin>
-  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/controller_switcher>
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/dynamic_plugin>
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/robot_handle>
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/task/robot_task>

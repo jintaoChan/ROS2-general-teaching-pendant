@@ -31,7 +31,7 @@ MainWindow::MainWindow(
     tab_widget->addTab(control_pad, "Move");
     TaskWidget* task_widget = new TaskWidget(setting_pannel, ports.state, central);
     tab_widget->addTab(task_widget, "Task");
-    SettingPage* setting_page = new SettingPage(setting_pannel, ports, central);
+    SettingPage* setting_page = new SettingPage(setting_pannel, ports, task_widget->pointPool(), central);
     tab_widget->addTab(setting_page, "Setting");
     PlotPage* plot_page = new PlotPage(10000, ports.state, central);
     tab_widget->addTab(plot_page, "Plot");

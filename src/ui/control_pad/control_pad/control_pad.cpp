@@ -51,42 +51,45 @@ ControlPad::ControlPad(SettingPanel* setting_panel, IRobotStateProvider* state_p
 
     timer_ = new QTimer(this);
     connect(timer_, &QTimer::timeout, this, &ControlPad::regularUpdate);
-    timer_->start(state_port_->getControllerUpdatePeriod() / 1e6);
+    // Cap UI refresh at ~125 Hz (8ms) to avoid wasting CPU on invisible redraws
+    int period_ms = std::max(8, static_cast<int>(state_port_->getControllerUpdatePeriod() / 1e6));
+    timer_->start(period_ms);
 }
 
 void ControlPad::MoveCommander(MoveButtonType type, MoveButtonEvent event, const std::string &joint_name) const {
-    JointsPosition joint_position;
     const auto& velo_ratio = setting_panel_->getVelocity();
     switch(type){
     case MoveButtonType::BACKWARD_VELOCITY: {
         if(event == MoveButtonEvent::PRESSED){
-            joint_position[joint_name].joint_value = state_port_->getJointLowerLimit(joint_name);
-            MotionPlugin::instance().moveJointPositionAbsolutely(joint_position, velo_ratio);
+            MotionPlugin::instance().jogJoint(joint_name, -1.0, velo_ratio);
         }
         else if(event == MoveButtonEvent::RELEASED){
-            MotionPlugin::instance().stop();
+            MotionPlugin::instance().stopStreaming();
         }
         break;
     }
     case MoveButtonType::BACKWARD_STEP: {
-        if(event == MoveButtonEvent::CLICKED)
+        if(event == MoveButtonEvent::CLICKED) {
+            JointsPosition joint_position;
             joint_position[joint_name].joint_value = current_position_.at(joint_name).joint_value - setting_panel_->getStep();
-        MotionPlugin::instance().moveJointPositionAbsolutely(joint_position, velo_ratio);
+            MotionPlugin::instance().moveToJointTarget(joint_position, velo_ratio);
+        }
         break;
     }
     case MoveButtonType::FORWARD_STEP: {
-        if(event == MoveButtonEvent::CLICKED)
+        if(event == MoveButtonEvent::CLICKED) {
+            JointsPosition joint_position;
             joint_position[joint_name].joint_value = current_position_.at(joint_name).joint_value + setting_panel_->getStep();
-        MotionPlugin::instance().moveJointPositionAbsolutely(joint_position, velo_ratio);
+            MotionPlugin::instance().moveToJointTarget(joint_position, velo_ratio);
+        }
         break;
     }
     case MoveButtonType::FORWARD_VELOCITY: {
         if(event == MoveButtonEvent::PRESSED){
-            joint_position[joint_name].joint_value = state_port_->getJointUpperLimit(joint_name);
-            MotionPlugin::instance().moveJointPositionAbsolutely(joint_position, velo_ratio);
+            MotionPlugin::instance().jogJoint(joint_name, 1.0, velo_ratio);
         }
         else if(event == MoveButtonEvent::RELEASED){
-            MotionPlugin::instance().stop();
+            MotionPlugin::instance().stopStreaming();
         }
         break;
     }
@@ -115,7 +118,7 @@ void ControlPad::MoveCommander(MoveButtonType type, MoveButtonEvent event, size_
         break;
     }
     }
-    MotionPlugin::instance().twistRobot(arr);
+    MotionPlugin::instance().jogCartesian(arr);
 }
 
 ControlPad::~ControlPad()

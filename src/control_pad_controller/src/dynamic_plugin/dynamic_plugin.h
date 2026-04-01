@@ -21,8 +21,6 @@ public:
     void identify(const size_t& db_start_index, const size_t& db_end_index) override;
     std::optional<JointsTorque> rnea(const JointsPosition& q, const JointsVelocity& v, const JointsAcceleration& a) override;
     std::optional<JointsTorque> currentPoseStableTorque(const JointsPosition& q) override;
-    std::pair<std::vector<double>, std::vector<double>> firstOrderMomentum(const std::vector<double>& q, const std::vector<double>& v, const std::vector<double>& t) override;
-    std::pair<Eigen::VectorXd, Eigen::VectorXd> firstOrderMomentum(const Eigen::VectorXd& q, const Eigen::VectorXd& v, const Eigen::VectorXd& t) override;
     const bool& isReady() const override;
 
     const Eigen::MatrixXd& dependenceComputation() override;
@@ -52,6 +50,5 @@ private:
     Eigen::MatrixXd base_params_;
     Eigen::MatrixXd friction_params_;
     size_t nq_;
-    Eigen::MatrixXd K0_;// first order momentum observer gains
     bool is_ready_{false};
 };

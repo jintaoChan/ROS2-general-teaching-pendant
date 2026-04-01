@@ -13,7 +13,6 @@
 #include <cereal/types/array.hpp>
 #include <cereal/types/vector.hpp>
 #include "app_ports.h"
-#include "simulate_external_force_bar.h"
 
 class ParamIdentification : public QWidget
 {
@@ -43,7 +42,6 @@ private:
     QLabel* base_param_size_;
     QHBoxLayout* base_param_size_layout_;
     QVBoxLayout* layout_;
-    QList<SimulateExternalForceBar*> sefb_list_;
 };
 
 namespace cereal {

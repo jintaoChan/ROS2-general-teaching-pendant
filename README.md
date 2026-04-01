@@ -113,7 +113,6 @@ Parameter table
 - controllers_name: specify your own controller's name in /config/ros2_controllers.yaml. It is used to publish msg. Missing name may cause the corresponding module becoming invalid.
 - coordinate_system: fix the base/tool/end effector coordinate system which must present in urdf.
 - cartesian_limits: cartesian movement limitation.
-- drag_params: drag and drop teaching parameters. D for Damping. M for Assistance. **Strongly recommend to set D to 100 and set M to 0 first. Then slowly adjust them to a reasonable value.**
 
 #### e. **Special driver**
 
@@ -131,5 +130,22 @@ Replace names with your own config package
 ```cmd
 ros2 launch xxx test.py   # no need to connect to real hardware. It will start with a gazebo
 ros2 launch xxx real.py   # real hardware
-ros2 run auto_store_ui auto_store_ui # ui
+ros2 run pendant_ui pendant_ui # ui
 ```
+---
+
+## Development & Contributing
+
+This project is currently in active development, and we are looking for passionate contributors to help it reach its full potential! Whether you are a robotics expert or a software architect, your insights are welcome.
+
+#### 🛠 Areas for Improvement
+Currently, there are two main areas where we are focusing our efforts:
+* **Kinematics & Dynamics:** These modules are in an early, unpolished state. We are looking to improve accuracy, numerical stability, and performance.
+* **System Architecture:** The internal structure is functional but could benefit from a more modular and scalable design. If you have a knack for design patterns, we’d love your feedback.
+
+#### 🌱 How to Get Involved
+We believe in collaborative growth. If you’re interested but don’t know where to start, feel free to open an issue or reach out! We are happy to provide guidance, explain the current codebase, and mentor those new to the project.
+
+1.  **Fork** the repository.
+2.  **Check the Issues** for labeled "help wanted" or "enhancement" tasks.
+3.  **Submit a PR** with your improvements.

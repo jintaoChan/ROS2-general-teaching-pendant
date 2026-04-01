@@ -11,11 +11,12 @@
 #include "motion_plugin.h"
 #include <stdexcept>
 
-TCP::TCP(const AppPorts& ports, QWidget *parent)
+TCP::TCP(const AppPorts& ports, PointPool& point_pool, QWidget *parent)
     : QWidget{parent},
     ui_(new Ui::TCP),
     tool_info_(ports.state->getRobotArmToolInfo()),
-    ports_(ports)
+    ports_(ports),
+    point_pool_(point_pool)
 {
     if (ports_.state == nullptr || ports_.command == nullptr) {
         throw std::invalid_argument("TCP requires non-null state and command ports");
@@ -145,14 +146,14 @@ QListWidgetItem* TCP::findItemByWidget(QListWidget* list, QWidget* w) {
 
 void TCP::on_calibrate_button_clicked()
 {
-    auto name_list = PointPool::instance().getAllPointsName();
+    auto name_list = point_pool_.getAllPointsName();
     std::vector<std::string> selected;
     StringSelectionDialog dlg(name_list);
     if (dlg.exec() == QDialog::Accepted) {
         selected = dlg.selectedItems();
         MovePointInfo points;
         for(const auto& s : selected) {
-            points[s] = PointPool::instance().getPoint((s));
+            points[s] = point_pool_.getPoint((s));
         }
         auto result = MotionPlugin::instance().tcpCalibration(points);
         auto widget = addNewToolFrame("", result);

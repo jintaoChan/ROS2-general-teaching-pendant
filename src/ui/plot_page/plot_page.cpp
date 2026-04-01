@@ -31,7 +31,9 @@ PlotPage::PlotPage(size_t window_size, IRobotStateProvider* state_port, QWidget 
     control_layout_->addWidget(save_button_);
     control_layout_->addWidget(freeze_button_);
     control_layout_->addWidget(clear_button_);
+    checkbox_layout_ = new QHBoxLayout();
     main_layout_->addLayout(control_layout_);
+    main_layout_->addLayout(checkbox_layout_);
     main_layout_->addLayout(graph_layout_);
     connect(combobox_, &QComboBox::currentTextChanged, this, &PlotPage::switchGraphContent);
     connect(save_button_, &QPushButton::pressed, this, &PlotPage::saveData);
@@ -62,22 +64,27 @@ void PlotPage::clearGraphs()
 void PlotPage::switchGraphContent(const QString &type_name)
 {
     clearGraphs();
-    auto type = magic_enum::enum_cast<DataTypeEnum>(type_name.toStdString()).value();
-    auto joint_nums = state_port_->getJointNums();
-    auto joint_names = state_port_->getJointsName();
-    size_t rows = std::ceil(std::sqrt(joint_nums));
-    size_t cols = std::ceil(double(joint_nums) / rows);
+    // Clear old checkboxes
+    for (auto* cb : joint_checkboxes_) delete cb;
+    joint_checkboxes_.clear();
 
-    for(size_t i = 0; i < joint_nums;++i){
-        auto g = new PlotWidget(type, window_size_, joint_names[i], this);
-        graph_list_.push_back(g);
-        graph_layout_->addWidget(g,i / cols, i % cols);
-    }
-    for (size_t r = 0; r < rows; ++r) {
-        graph_layout_->setRowStretch(r, 1);
-    }
-    for (size_t c = 0; c < cols; ++c) {
-        graph_layout_->setColumnStretch(c, 1);
+    auto type = magic_enum::enum_cast<DataTypeEnum>(type_name.toStdString()).value();
+    auto joint_names = state_port_->getJointsName();
+
+    auto g = new PlotWidget(type, window_size_, joint_names, this);
+    graph_list_.push_back(g);
+    graph_layout_->addWidget(g, 0, 0);
+    graph_layout_->setRowStretch(0, 1);
+    graph_layout_->setColumnStretch(0, 1);
+
+    for (const auto& name : joint_names) {
+        auto* cb = new QCheckBox(QString::fromStdString(name), this);
+        cb->setChecked(true);
+        checkbox_layout_->addWidget(cb);
+        joint_checkboxes_.push_back(cb);
+        connect(cb, &QCheckBox::toggled, this, [g, name](bool checked) {
+            g->setJointVisible(name, checked);
+        });
     }
 }
 

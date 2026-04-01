@@ -6,7 +6,7 @@ void MoveTask::execute()
     try{
         switch(target_.MoveType) {
         case(MoveTypeEnum::JOINT): {
-            MotionPlugin::instance().moveJointPositionAbsolutely(target_.JointValues,target_.VelocityRatio);
+            MotionPlugin::instance().moveToJointTarget(target_.JointValues,target_.VelocityRatio);
             break;
         }
         case(MoveTypeEnum::POSE): {
@@ -23,7 +23,7 @@ void MoveTask::execute()
 
 bool MoveTask::isFinished()
 {
-    return !MotionPlugin::instance().isRunning();
+    return MotionPlugin::instance().isTrajectoryComplete();
 }
 
 void MoveTask::stop()

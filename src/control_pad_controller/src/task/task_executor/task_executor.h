@@ -7,7 +7,6 @@
 #include <atomic>
 #include <functional>
 #include "robot_task.h"
-#include "singleton.hpp"
 
 enum class ExecutorState {
     IDLE,
@@ -16,8 +15,7 @@ enum class ExecutorState {
 };
 
 
-class TaskExecutor : public Singleton<TaskExecutor> {
-    friend class Singleton<TaskExecutor>;
+class TaskExecutor {
     using StateCallback = std::function<void(ExecutorState)>;
 
 public:

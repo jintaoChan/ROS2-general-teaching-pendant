@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(auto_store_ui)
+project(pendant_ui)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -43,7 +43,6 @@ include_directories(
   setting_panel/
   setting_page/
   setting_page/param_identification/
-  setting_page/param_identification/simulate_external_force_bar/
   setting_page/tcp/
   setting_page/tcp/tool_frame_widget/
   control_pad/move_button/

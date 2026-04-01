@@ -1,167 +1,91 @@
 #pragma once
 
 #include <memory>
-#include <optional>
-#include <string>
-#include <vector>
-#include <unordered_map>
 #include <Eigen/Eigen>
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/subscription.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
-#include <kdl/frames.hpp>
-#include <kdl/chain.hpp>
 
-#include <trajectory_msgs/msg/joint_trajectory.hpp>
+#include "robot_ports.h"
 
-// ROS
 namespace rclcpp {
 class Node;
 class Logger;
-class Time;
-}
-
-// URDF
-namespace urdf {
-class Model;
-class ModelInterface;
-class Joint;
 }
 
 class IDynamicsService;
 
 class DataBase;
 
-enum class DriverState
-{
-    STATE_UNDEFINED = 0,
-    STATE_START = 1,
-    STATE_NOT_READY_TO_SWITCH_ON,
-    STATE_SWITCH_ON_DISABLED,
-    STATE_READY_TO_SWITCH_ON,
-    STATE_SWITCH_ON,
-    STATE_OPERATION_ENABLED,
-    STATE_QUICK_STOP_ACTIVE,
-    STATE_FAULT_REACTION_ACTIVE,
-    STATE_FAULT
-};
-
-enum class DriverMode : int8_t {
-    CSP = 8,
-    CST = 10,
-};
-
-enum class ControlCoordinateSystemType {
-    Base = 0,
-    Tool,
-    EndEffector
-};
-
-struct Joint {
-    std::shared_ptr<const urdf::Joint> joint_info;
-    double joint_value = 0.0;
-};
-
-using JointsPosition = std::unordered_map<std::string, Joint>;
-using JointsVelocity = std::unordered_map<std::string, Joint>;
-using JointsAcceleration = std::unordered_map<std::string, Joint>;
-using JointsTorque = std::unordered_map<std::string, Joint>;
-using JointsMode = std::unordered_map<std::string, int8_t>;
-using JointsStatus = std::unordered_map<std::string, DriverState>;
-using IOValue = std::optional<bool>;
-using IOStatus = std::vector<std::pair<std::string, std::vector<std::pair<std::string, IOValue>>>>; //<module_name, <interface_name, val>>
-using ToolInfo = std::unordered_map<std::string, KDL::Frame>;
-
-enum class MoveTypeEnum : char {
-    POSE = 0,
-    JOINT
-};
-
-struct TargetPointInfo {
-    MoveTypeEnum MoveType;
-    JointsPosition JointValues;
-    KDL::Frame Pose;
-    double VelocityRatio{0.1};
-};
-using MovePointInfo  = std::unordered_map<std::string, TargetPointInfo>;
-
-
-// Drag parameters per joint (simple storage for admittance / momentum observer tuning)
-enum class DragParamEnum : uint8_t{
-    D = 0,
-    M,
-};
-
-using DragParams = std::unordered_map<DragParamEnum, Eigen::VectorXd>;
-
-using MotorStatusCallback = std::function<void(JointsStatus)>;
-using IOStatusCallback = std::function<void(IOStatus)>;
-
-class RobotHandle {
+class RobotHandle : public IRobotStateProvider,
+                    public IRobotCommandPort,
+                    public IRobotEvents {
 public:
     explicit RobotHandle(const std::shared_ptr<rclcpp::Node>& node);
-    ~RobotHandle();
+    ~RobotHandle() override;
 
-    // accessors (same as before)
-    const urdf::Model& getURDFModel() const;
-    const KDL::Chain& getKDLChain() const;
-    const JointsPosition& getCurrentJointPosition() const;
-    const JointsVelocity& getCurrentJointVelocity() const;
-    const JointsTorque& getCurrentJointTorque() const;
-    const JointsTorque& getCurrentJointEstimatedExternalTorque() const;
-    size_t getJointNums() const;
-    const double& getJointVelocityLimit(const std::string&) const;
-    const double& getJointLowerLimit(const std::string&) const;
-    const double& getJointUpperLimit(const std::string&) const;
-    const std::vector<std::string>& getJointsName() const;
-    rclcpp::Time getTime();
+    // IRobotStateProvider
+    const urdf::Model& getURDFModel() const override;
+    const KDL::Chain& getKDLChain() const override;
+    JointsPosition getCurrentJointPosition() const override;
+    JointsVelocity getCurrentJointVelocity() const override;
+    JointsTorque getCurrentJointTorque() const override;
+    size_t getJointNums() const override;
+    double getJointVelocityLimit(const std::string&) const override;
+    double getJointLowerLimit(const std::string&) const override;
+    double getJointUpperLimit(const std::string&) const override;
+    const std::vector<std::string>& getJointsName() const override;
+    rclcpp::Time getTime() override;
 
-    const double& getCartesianLimitsMaxTransVel() const;
-    const double& getCartesianLimitsMaxTransAcc() const;
-    const double& getCartesianLimitsMaxTransDec() const;
-    const double& getCartesianLimitsMaxRotVel() const;
+    double getCartesianLimitsMaxTransVel() const override;
+    double getCartesianLimitsMaxTransAcc() const override;
+    double getCartesianLimitsMaxTransDec() const override;
+    double getCartesianLimitsMaxRotVel() const override;
 
-    const uint64_t& getControllerUpdatePeriod() const;
+    uint64_t getControllerUpdatePeriod() const override;
 
-    const std::string& getRobotArmBaseLinkName() const;
-    const std::string& getRobotArmEndLinkName() const;
-    const ToolInfo& getRobotArmToolInfo() const;
-    const DragParams& getDragParams() const;
+    const std::string& getRobotArmBaseLinkName() const override;
+    const std::string& getRobotArmEndLinkName() const override;
+    const ToolInfo& getRobotArmToolInfo() const override;
 
-    void moveJointByVelcoity(const JointsVelocity& joint_velocity);
-    void moveJointByAbsPosition(const JointsPosition& joint_position, double velo_ratio);
-    void moveJointByAbsPosition(trajectory_msgs::msg::JointTrajectory& joint_position);
-    void setJointTorque(const JointsTorque& joint_torque);
+    const bool& isToolFrameSet() const override;
+    const std::string& getCurrentToolFrame() const override;
 
-    void deleteToolFrame(const std::string& tool_name);
-    void addToolFrame(const std::string& tool_name, const KDL::Frame& frame);
-    void setCurrentToolFrame(const std::string& tool_name);
+    bool isRunning() const override;
+    bool isTrajectoryComplete() const override;
 
-    const bool& isToolFrameSet() const;
-    const std::string& getCurrentToolFrame() const;
+    const std::vector<std::string>& getIOInputGroupsName() const override;
+    const std::vector<std::string>& getIOOutputGroupsName() const override;
+    const std::vector<std::string>& getIOInterfacesName(const std::string& module_name) const override;
+    bool isIOMonitorable(const std::string& module_name, const std::string& interface_name) const override;
 
-    void setIsRunning(bool is_running);
-    const bool& isRunning() const;
-    void setJointTorqueOffset(const std::string& joint_name, double v);
-    void setDynamicsService(IDynamicsService* dynamics);
+    // IRobotCommandPort
+    void moveJointByVelocity(const JointsVelocity& joint_velocity) override;
+    void moveJointByAbsPosition(const JointsPosition& joint_position, double velo_ratio) override;
+    void executeTrajectory(trajectory_msgs::msg::JointTrajectory& trajectory) override;
+    void setJointTorque(const JointsTorque& joint_torque) override;
 
-    //CiA402 control
-    size_t registerMotorStatusCallback(MotorStatusCallback cb);
-    void unregisterMotorStatusCallback(size_t callback_id);
-    void disableMotorDrive();
-    void clearFault();
-    void enableMotorDrive();
-    void switchToCSP();
-    void switchToCST();
+    void setIsRunning(bool is_running) override;
 
-    //io
-    const std::vector<std::string>& getIOInputGroupsName() const;
-    const std::vector<std::string>& getIOOutputGroupsName() const;
-    const std::vector<std::string>& getIOInterfacesName(const std::string& module_name) const;
-    bool isIOMonitorable(const std::string& module_name, const std::string& interface_name) const;
-    size_t registerIOStatusCallback(IOStatusCallback cb);
-    void unregisterIOStatusCallback(size_t callback_id);
-    void setIOState(const std::string& module_name, const std::string& interface_name, bool target_state);
+    void disableMotorDrive() override;
+    void clearFault() override;
+    void enableMotorDrive() override;
+    void switchToCSP() override;
+    void switchToCST() override;
+
+    void setIOState(const std::string& module_name, const std::string& interface_name, bool target_state) override;
+    void deleteToolFrame(const std::string& tool_name) override;
+    void addToolFrame(const std::string& tool_name, const KDL::Frame& frame) override;
+    void setCurrentToolFrame(const std::string& tool_name) override;
+
+    // IRobotEvents
+    size_t registerMotorStatusCallback(MotorStatusCallback cb) override;
+    void unregisterMotorStatusCallback(size_t callback_id) override;
+    size_t registerIOStatusCallback(IOStatusCallback cb) override;
+    void unregisterIOStatusCallback(size_t callback_id) override;
+
+    // RobotHandle-specific (not in interfaces)
+    void setDynamicsService(const std::shared_ptr<IDynamicsService>& dynamics);
 
 
 private:

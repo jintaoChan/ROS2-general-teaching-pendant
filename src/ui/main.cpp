@@ -19,9 +19,9 @@ int main(int argc, char *argv[])
     {
         QApplication a(argc, argv);
         AppPorts app_ports{
-            runtime_context.robot_ports_adapter.get(),
-            runtime_context.robot_ports_adapter.get(),
-            runtime_context.robot_ports_adapter.get()};
+            runtime_context.robot_handle.get(),
+            runtime_context.robot_handle.get(),
+            runtime_context.robot_handle.get()};
         MainWindow w(app_ports);
         w.show();
 

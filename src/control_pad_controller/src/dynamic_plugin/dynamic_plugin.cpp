@@ -38,7 +38,6 @@ DynamicPlugin::DynamicPlugin(IRobotStateProvider* state_port)
         all_params_.block(old_size, 0, dyn_params.size(), 1) = dyn_params;
     }
     nq_ = model_.inertias.size() - 1;
-    K0_ = Eigen::MatrixXd::Identity(nq_, nq_) * 10;
 
 }
 
@@ -137,22 +136,17 @@ std::optional<JointsTorque> DynamicPlugin::rnea(const JointsPosition &q, const J
     try {
         JointsTorque res;
         const auto& joint_names = state_port_->getJointsName();
-        const auto& drag_params = state_port_->getDragParams();
-        const auto& external_force = state_port_->getCurrentJointEstimatedExternalTorque();
-        Eigen::VectorXd eq(nq_), ev(nq_), ea(nq_), eef(nq_);
+        Eigen::VectorXd eq(nq_), ev(nq_), ea(nq_);
 
         for(size_t i = 0; i < nq_; ++i) {
             eq(i) = q.at(joint_names[i]).joint_value;
             ev(i) = v.at(joint_names[i]).joint_value;
             ea(i) = a.at(joint_names[i]).joint_value;
-            eef(i) = external_force.at(joint_names[i]).joint_value;
         }
         auto et = pinocchio::computeJointTorqueRegressor(model_, data_, eq, ev, ea);
         et = (et * dep_res_.Pb * base_params_).eval();
         auto t = (et +
-                  computeFrictionTorque(ev) +
-                  -drag_params.at(DragParamEnum::D).cwiseProduct(ev) +
-                  drag_params.at(DragParamEnum::M).cwiseProduct(eef)).eval();
+                  computeFrictionTorque(ev)).eval();
         for(size_t i = 0; i < nq_; ++i) {
             res[joint_names[i]].joint_value = t(i);
         }
@@ -173,45 +167,6 @@ std::optional<JointsTorque> DynamicPlugin::currentPoseStableTorque(const JointsP
         }
     });
     return rnea(state_port_->getCurrentJointPosition(), zero, zero);
-}
-
-std::pair<std::vector<double>, std::vector<double>>  DynamicPlugin::firstOrderMomentum(const std::vector<double>& q, const std::vector<double>& v, const std::vector<double>& t)
-{
-    Eigen::VectorXd q_eigen = Eigen::Map<const Eigen::VectorXd>(q.data(), q.size());
-    Eigen::VectorXd v_eigen = Eigen::Map<const Eigen::VectorXd>(v.data(), v.size());
-    Eigen::VectorXd t_eigen = Eigen::Map<const Eigen::VectorXd>(t.data(), t.size());
-    auto res = firstOrderMomentum(q_eigen, v_eigen, t_eigen);
-    auto joint_torques = std::vector<double>(res.first.data(), res.first.data() + res.first.size());
-    auto cartesian_force = std::vector<double>(res.second.data(), res.second.data() + res.second.size());
-    return {joint_torques, cartesian_force};
-}
-
-std::pair<Eigen::VectorXd, Eigen::VectorXd> DynamicPlugin::firstOrderMomentum(
-    const Eigen::VectorXd& q,
-    const Eigen::VectorXd& v,
-    const Eigen::VectorXd& t
-    ) {
-    const double peroid = static_cast<double>(state_port_->getControllerUpdatePeriod()) / 1e9;
-    model_.gravity.linear().setZero();
-    const static auto zero = Eigen::VectorXd(q.size()).setZero();
-    static auto r = zero;
-    static auto sum = zero;
-    static auto p0 = (pinocchio::computeJointTorqueRegressor(model_, data_, q, zero, v) * dep_res_.Pb * base_params_).eval();
-    auto Mv = (pinocchio::computeJointTorqueRegressor(model_, data_, q, zero, v) * dep_res_.Pb * base_params_).eval();
-    auto C = (pinocchio::computeJointTorqueRegressor(model_, data_, q, v, zero) * dep_res_.Pb * base_params_).eval();
-    model_.gravity.linear() = Eigen::Vector3d(0.0, 0.0, -9.81);
-    auto G = (pinocchio::computeJointTorqueRegressor(model_, data_, q, zero, zero) * dep_res_.Pb * base_params_).eval();
-    // compute friction torque using estimated friction parameters (if available)
-    Eigen::VectorXd tau_f = Eigen::VectorXd::Zero(q.size());
-    tau_f = computeFrictionTorque(v);
-
-    auto inter = (t - tau_f + C - G + r) * peroid;
-    sum += inter;
-    r = K0_ * (Mv - sum - p0);
-
-    auto joint_torques = r.eval().reshaped();
-    auto cartesian_force = calculateExternalCartesianForce(q, joint_torques);
-    return {joint_torques, cartesian_force};
 }
 
 const bool &DynamicPlugin::isReady() const

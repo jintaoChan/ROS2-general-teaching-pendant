@@ -1,4 +1,5 @@
 #include "io_task.h"
+#include <iostream>
 
 IRobotCommandPort* IOTask::command_port_ = nullptr;
 IRobotEvents* IOTask::event_port_ = nullptr;

@@ -84,7 +84,7 @@ SettingPanel::SettingPanel(const AppPorts& ports, QWidget *parent)
 
     timer_ = new QTimer(this);
     connect(timer_, &QTimer::timeout, this, &SettingPanel::regularUpdate);
-    timer_->start(20);
+    timer_->start(200);
 }
 
 SettingPanel::~SettingPanel()

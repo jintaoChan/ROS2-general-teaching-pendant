@@ -38,7 +38,7 @@ QStringList PointPoolWidget::getPointsName() const
 
 TargetPointInfo PointPoolWidget::getPoint(const std::string &point_name) const
 {
-    return PointPool::instance().getPoint(point_name);
+    return point_pool_.getPoint(point_name);
 }
 
 void PointPoolWidget::addPoint(const TargetPointInfo &point_info)
@@ -62,7 +62,7 @@ void PointPoolWidget::deletePoint(QModelIndex index)
 {
     QModelIndex point_to_del_index = model_->index(index.row(), 0);
     std::string point_to_del_name = model_->data(point_to_del_index).toString().toStdString();
-    PointPool::instance().deletePoint(point_to_del_name);
+    point_pool_.deletePoint(point_to_del_name);
     model_->removeRow(index.row());
 }
 
@@ -70,7 +70,7 @@ void PointPoolWidget::deletePoint(const std::string &point_name)
 {
     for(int i = 0;i < model_->rowCount(); ++i) {
         if(model_->item(i)->text().toStdString() == point_name) {
-            PointPool::instance().deletePoint(point_name);
+            point_pool_.deletePoint(point_name);
             model_->removeRow(i);
             break;
         }
@@ -104,7 +104,7 @@ QModelIndex PointPoolWidget::addPoint(const std::string &point_name, const Targe
         break;
     }
     model_->appendRow({point_item, newQString("")});
-    PointPool::instance().addPoint(point_name, point_info);
+    point_pool_.addPoint(point_name, point_info);
     return model_->indexFromItem(point_item);
 }
 
@@ -126,7 +126,7 @@ void PointPoolWidget::startDrag(Qt::DropActions)
 
 void PointPoolWidget::modifyPointName(const std::string &old_name, const std::string &new_name)
 {
-    auto old_point = PointPool::instance().getPoint(old_name);
-    PointPool::instance().deletePoint(old_name);
-    PointPool::instance().addPoint(new_name, old_point);
+    auto old_point = point_pool_.getPoint(old_name);
+    point_pool_.deletePoint(old_name);
+    point_pool_.addPoint(new_name, old_point);
 }

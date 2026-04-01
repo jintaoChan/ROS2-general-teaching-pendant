@@ -38,11 +38,6 @@ ParamIdentification::ParamIdentification(const AppPorts& ports, QWidget *parent)
     load_param_button_->setText("Load param from file");
     identify_button_->setText("Start identify by a trajectory");
     layout_->addLayout(base_param_size_layout_);
-    for(const auto& n : ports_.state->getJointsName()) {
-        auto sefb = new SimulateExternalForceBar(QString::fromStdString(n), ports_.command, this);
-        sefb_list_.push_back(sefb);
-        layout_->addWidget(sefb);
-    }
     layout_->addWidget(copy_info_button_);
     layout_->addWidget(load_param_button_);
     layout_->addWidget(identify_button_);
@@ -182,10 +177,10 @@ void ParamIdentification::identifyClicked()
                 decltype(sample_start_index) sample_end_index;
 
                 // publish trajectory
-                ports_.command->moveJointByAbsPosition(traj);
+                ports_.command->executeTrajectory(traj);
 
-                // wait until RobotHandle reports finished; poll with sleep
-                while (ports_.state->isRunning()) {
+                // wait until it reports finished; poll with sleep
+                while (!ports_.state->isTrajectoryComplete()) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 }
 
